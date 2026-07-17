@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Creador de Plantillas Visual</title>
+    <title>Admin - Generador de Documentos</title>
     
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
@@ -17,28 +17,41 @@
         .header { background: #1e1e1e; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #9b59b6; display: flex; justify-content: space-between; align-items: center; }
         .header h1 { color: #9b59b6; font-size: 22px; }
 
-        .main-container { display: flex; gap: 20px; flex: 1; overflow: hidden; }
+        /* Pestañas */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .tab-btn { background: transparent; color: #888; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; transition: 0.3s; }
+        .tab-btn:hover { color: #fff; background: #222; }
+        .tab-btn.active { color: #fff; background: #9b59b6; }
         
-        /* Panel Izquierdo: Controles */
-        .panel-izquierdo { width: 350px; background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .tab-content { display: none; flex: 1; overflow: hidden; }
+        .tab-content.active { display: flex; }
+
+        /* Estilos Generales */
+        .panel { background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
         .input-group label { color: #ccc; font-weight: bold; font-size: 13px; }
         .input-group input, .input-group select, .input-group textarea { padding: 10px; background: #000; color: #fff; border: 1px solid #444; border-radius: 5px; outline: none; }
         .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: #9b59b6; }
         
-        .btn-primary { background: #9b59b6; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; margin-top: 10px; }
+        .btn-primary { background: #9b59b6; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .btn-primary:hover { background: #8e44ad; }
+        .btn-success { background: #2ecc71; color: #000; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-danger { background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+        /* Tabla de Códigos */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #222; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #444; }
+        th { background: #333; color: #f1c40f; }
+        tr:hover { background: #2a2a2a; }
+
+        /* Creador Visual (Panel Izquierdo y Derecho ) */
+        .panel-izquierdo { width: 350px; background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .panel-derecho { flex: 1; background: #222; border-radius: 8px; border: 1px solid #444; display: flex; justify-content: center; align-items: flex-start; overflow: auto; padding: 20px; position: relative; margin-left: 20px; }
         
-        /* Lista de campos dibujados */
         .campos-lista { list-style: none; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
         .campo-item { background: #2c3e50; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-left: 3px solid #3498db; }
-        .btn-delete { background: transparent; border: none; color: #e74c3c; cursor: pointer; font-weight: bold; }
-
-        /* Panel Derecho: Lienzo del PDF */
-        .panel-derecho { flex: 1; background: #222; border-radius: 8px; border: 1px solid #444; display: flex; justify-content: center; align-items: flex-start; overflow: auto; padding: 20px; position: relative; }
         
-        /* Contenedor relativo para encimar los canvas */
-        .canvas-container { position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5 ); }
+        .canvas-container { position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
         #pdf-canvas { display: block; }
         #draw-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; z-index: 10; }
     </style>
@@ -46,11 +59,53 @@
 <body>
 
     <div class="header">
-        <h1>🛠️ Admin: Creador de Plantillas Visual</h1>
+        <h1>🛠️ Admin: Generador de Documentos</h1>
         <span style="color: #2ecc71; font-weight: bold;" id="status-db">Conectando a BD...</span>
     </div>
 
-    <div class="main-container">
+    <!-- Navegación de Pestañas -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab('tab-codigos', this)">🎟️ Gestión de Códigos</button>
+        <button class="tab-btn" onclick="openTab('tab-plantillas', this)">📄 Creador de Plantillas</button>
+    </div>
+
+    <!-- PESTAÑA 1: GESTIÓN DE CÓDIGOS -->
+    <div id="tab-codigos" class="tab-content active" style="flex-direction: column;">
+        <div class="panel" style="display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap;">
+            <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label>Nuevo Código (Para el cliente)</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="nuevo-codigo" placeholder="Ej: JUAN-123" style="flex: 1;">
+                    <button class="btn-primary" onclick="generarCodigoRandom()" style="margin-top: 0;">🎲 Aleatorio</button>
+                </div>
+            </div>
+            <div class="input-group" style="width: 150px;">
+                <label>Créditos (Hojas)</label>
+                <input type="number" id="nuevo-creditos" value="5" min="1">
+            </div>
+            <button class="btn-success" onclick="crearCodigo()" style="height: 42px; margin-bottom: 15px;">➕ Crear Código</button>
+        </div>
+
+        <div class="panel" style="flex: 1; margin-top: 20px;">
+            <h3 style="color: #f1c40f;">Códigos Activos</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th style="text-align: center;">Créditos Disponibles</th>
+                        <th>Fecha de Creación</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-codigos">
+                    <tr><td colspan="4" style="text-align: center; color: #888;">Cargando códigos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 2: CREADOR DE PLANTILLAS VISUAL -->
+    <div id="tab-plantillas" class="tab-content">
         <!-- PANEL IZQUIERDO -->
         <div class="panel-izquierdo">
             <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px;">1. Datos de la Plantilla</h3>
@@ -98,7 +153,7 @@
     </div>
 
 <script>
-    // 1. CONFIGURACIÓN DE SUPABASE (Con tus credenciales exactas)
+    // 1. CONFIGURACIÓN DE SUPABASE
     const supabaseUrl = 'https://wpzddhmllctdsiuxenss.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwemRkaG1sbGN0ZHNpdXhlbnNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjUyNzQsImV4cCI6MjA5OTU0MTI3NH0.hwSxJ3Sk_RlgbvFyr8S64XRuxW7j55BU4gaIneFTuhY';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
@@ -106,16 +161,9 @@
     // Configurar el Worker de PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    // Variables Globales
-    let camposDibujados = [];
-    let isDrawing = false;
-    let startX = 0, startY = 0;
-    const drawCanvas = document.getElementById('draw-canvas' );
-    const ctx = drawCanvas.getContext('2d');
-
-    // Verificar conexión
-    async function testConnection() {
-        const { data, error } = await supabase.from('plantillas').select('id').limit(1);
+    // Verificar conexión y cargar datos iniciales
+    async function init( ) {
+        const { data, error } = await supabase.from('usuarios_codigos').select('id').limit(1);
         const statusEl = document.getElementById('status-db');
         if (error) {
             statusEl.innerText = '❌ Error de BD';
@@ -123,11 +171,94 @@
             console.error(error);
         } else {
             statusEl.innerText = '✅ BD Conectada';
+            cargarCodigos(); // Cargar la tabla de códigos
         }
     }
-    testConnection();
+    init();
 
-    // 2. LÓGICA PARA RENDERIZAR EL PDF
+    // --- LÓGICA DE PESTAÑAS ---
+    function openTab(tabId, btnElement) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btnElement.classList.add('active');
+    }
+
+    // --- LÓGICA DE GESTIÓN DE CÓDIGOS ---
+    function generarCodigoRandom() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = 'DOC-';
+        for (let i = 0; i < 6; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+        document.getElementById('nuevo-codigo').value = result;
+    }
+
+    async function cargarCodigos() {
+        const { data, error } = await supabase.from('usuarios_codigos').select('*').order('fecha_creacion', { ascending: false });
+        const tbody = document.getElementById('tabla-codigos');
+        
+        if (error) {
+            tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Error al cargar códigos</td></tr>`;
+            return;
+        }
+
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888;">No hay códigos creados aún.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        data.forEach(row => {
+            const fecha = new Date(row.fecha_creacion).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong style="color: #9b59b6; font-size: 16px;">${row.codigo}</strong></td>
+                    <td style="text-align: center;"><span style="background: #2ecc71; color: #000; padding: 4px 10px; border-radius: 12px; font-weight: bold;">${row.creditos}</span></td>
+                    <td>${fecha}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-danger" onclick="eliminarCodigo(${row.id}, '${row.codigo}')">🗑️ Eliminar</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    async function crearCodigo() {
+        const codigo = document.getElementById('nuevo-codigo').value.trim().toUpperCase();
+        const creditos = parseInt(document.getElementById('nuevo-creditos').value);
+
+        if (!codigo) return alert("Por favor, ingresa o genera un código.");
+        if (isNaN(creditos) || creditos <= 0) return alert("Ingresa una cantidad válida de créditos.");
+
+        try {
+            const { error } = await supabase.from('usuarios_codigos').insert([{ codigo: codigo, creditos: creditos }]);
+            if (error) {
+                if (error.code === '23505') throw new Error("Este código ya existe. Intenta con otro.");
+                throw error;
+            }
+            
+            alert(`✅ Código ${codigo} creado con ${creditos} créditos.`);
+            document.getElementById('nuevo-codigo').value = '';
+            cargarCodigos();
+        } catch (err) {
+            alert("❌ Error: " + err.message);
+        }
+    }
+
+    async function eliminarCodigo(id, codigoStr) {
+        if (!confirm(`¿Estás seguro de eliminar el código ${codigoStr}? El cliente perderá el acceso.`)) return;
+        
+        const { error } = await supabase.from('usuarios_codigos').delete().eq('id', id);
+        if (error) alert("Error al eliminar: " + error.message);
+        else cargarCodigos();
+    }
+
+    // --- LÓGICA DEL CREADOR VISUAL (PDF) ---
+    let camposDibujados = [];
+    let isDrawing = false;
+    let startX = 0, startY = 0;
+    const drawCanvas = document.getElementById('draw-canvas');
+    const ctx = drawCanvas.getContext('2d');
+
     document.getElementById('pdf-upload').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file.type !== 'application/pdf') return alert('Por favor, sube un archivo PDF.');
@@ -135,40 +266,33 @@
         const reader = new FileReader();
         reader.onload = async function() {
             const typedarray = new Uint8Array(this.result);
-            
-            // Cargar el PDF
             const pdf = await pdfjsLib.getDocument(typedarray).promise;
-            const page = await pdf.getPage(1); // Solo la página 1 por ahora
+            const page = await pdf.getPage(1);
 
-            const scale = 1.5; // Escala para que se vea bien
+            const scale = 1.5;
             const viewport = page.getViewport({ scale: scale });
 
-            // Configurar Canvas del PDF
             const pdfCanvas = document.getElementById('pdf-canvas');
             const pdfCtx = pdfCanvas.getContext('2d');
             pdfCanvas.height = viewport.height;
             pdfCanvas.width = viewport.width;
 
-            // Configurar Canvas de Dibujo (Mismo tamaño)
             drawCanvas.height = viewport.height;
             drawCanvas.width = viewport.width;
 
-            // Renderizar la página en el canvas
             const renderContext = { canvasContext: pdfCtx, viewport: viewport };
             await page.render(renderContext).promise;
 
-            // Mostrar el contenedor
             document.getElementById('mensaje-vacio').style.display = 'none';
             document.getElementById('canvas-wrapper').style.display = 'block';
             
-            camposDibujados = []; // Reiniciar campos
+            camposDibujados = [];
             actualizarListaCampos();
             redibujarCampos();
         };
         reader.readAsArrayBuffer(file);
     });
 
-    // 3. LÓGICA PARA DIBUJAR RECTÁNGULOS (COORDENADAS)
     drawCanvas.addEventListener('mousedown', (e) => {
         isDrawing = true;
         const rect = drawCanvas.getBoundingClientRect();
@@ -182,9 +306,8 @@
         const currentX = e.clientX - rect.left;
         const currentY = e.clientY - rect.top;
 
-        redibujarCampos(); // Mantener los anteriores
+        redibujarCampos();
         
-        // Dibujar el rectángulo actual (Azul semitransparente)
         ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
         ctx.fillRect(startX, startY, currentX - startX, currentY - startY);
         ctx.strokeStyle = '#3498db';
@@ -203,17 +326,14 @@
         const width = endX - startX;
         const height = endY - startY;
 
-        // Ignorar clics accidentales (muy pequeños)
         if (Math.abs(width) < 10 || Math.abs(height) < 10) {
             redibujarCampos();
             return;
         }
 
-        // Preguntar el nombre del campo
         const nombreCampo = prompt("¿Qué dato va en este recuadro? (Ej: Nombre, DNI, Fecha)");
         
         if (nombreCampo && nombreCampo.trim() !== "") {
-            // Guardar las coordenadas exactas
             camposDibujados.push({
                 nombre: nombreCampo.trim(),
                 x: Math.min(startX, endX),
@@ -229,13 +349,12 @@
     function redibujarCampos() {
         ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
         camposDibujados.forEach(campo => {
-            ctx.fillStyle = 'rgba(46, 204, 113, 0.3)'; // Verde
+            ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
             ctx.fillRect(campo.x, campo.y, campo.ancho, campo.alto);
             ctx.strokeStyle = '#2ecc71';
             ctx.lineWidth = 2;
             ctx.strokeRect(campo.x, campo.y, campo.ancho, campo.alto);
             
-            // Etiqueta de texto
             ctx.fillStyle = '#000';
             ctx.font = 'bold 14px Arial';
             ctx.fillText(campo.nombre, campo.x + 5, campo.y + 15);
@@ -267,7 +386,6 @@
         redibujarCampos();
     }
 
-    // 4. GUARDAR EN SUPABASE
     async function guardarPlantilla() {
         const nombre = document.getElementById('tpl-nombre').value.trim();
         const tipo = document.getElementById('tpl-tipo').value;
@@ -276,10 +394,7 @@
         if (!nombre) return alert("Por favor, ponle un nombre a la plantilla.");
         if (camposDibujados.length === 0) return alert("Debes dibujar al menos un campo en el PDF.");
 
-        // Construimos el JSONB mágico
-        const configuracionJSON = {
-            elementos: camposDibujados
-        };
+        const configuracionJSON = { elementos: camposDibujados };
 
         try {
             const { data, error } = await supabase.from('plantillas').insert([{
@@ -293,7 +408,6 @@
 
             alert("✅ ¡Plantilla guardada exitosamente en Supabase!");
             
-            // Limpiar formulario
             document.getElementById('tpl-nombre').value = '';
             document.getElementById('tpl-desc').value = '';
             camposDibujados = [];
