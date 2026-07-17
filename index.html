@@ -3,118 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat con la Base de Datos de Recepción</title>
+    <title>Admin - Creador de Plantillas Visual</title>
+    
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
+    <!-- PDF.js para renderizar el PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .chat-container { width: 90%; max-width: 600px; height: 80vh; background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1 ); display: flex; flex-direction: column; }
-        #chat-window { flex-grow: 1; overflow-y: auto; padding: 20px; }
-        .message { margin-bottom: 15px; padding: 10px 15px; border-radius: 18px; max-width: 80%; line-height: 1.4; }
-        .user-message { background-color: #007bff; color: white; align-self: flex-end; margin-left: auto; }
-        .ia-message { background-color: #e9e9eb; color: #333; align-self: flex-start; }
-        .error-message { background-color: #ffebee; color: #c62828; border: 1px solid #c62828; }
-        #input-area { display: flex; padding: 15px; border-top: 1px solid #ddd; }
-        #user-input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; font-size: 16px; }
-        #send-button { background: #007bff; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; margin-left: 10px; font-size: 20px; cursor: pointer; }
-        pre { background-color: #2d2d2d; color: #f8f8f2; padding: 10px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121212; color: #ffffff; padding: 20px; display: flex; flex-direction: column; height: 100vh; }
+        
+        .header { background: #1e1e1e; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #9b59b6; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { color: #9b59b6; font-size: 22px; }
+
+        .main-container { display: flex; gap: 20px; flex: 1; overflow: hidden; }
+        
+        /* Panel Izquierdo: Controles */
+        .panel-izquierdo { width: 350px; background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { color: #ccc; font-weight: bold; font-size: 13px; }
+        .input-group input, .input-group select, .input-group textarea { padding: 10px; background: #000; color: #fff; border: 1px solid #444; border-radius: 5px; outline: none; }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: #9b59b6; }
+        
+        .btn-primary { background: #9b59b6; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; margin-top: 10px; }
+        .btn-primary:hover { background: #8e44ad; }
+        
+        /* Lista de campos dibujados */
+        .campos-lista { list-style: none; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .campo-item { background: #2c3e50; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-left: 3px solid #3498db; }
+        .btn-delete { background: transparent; border: none; color: #e74c3c; cursor: pointer; font-weight: bold; }
+
+        /* Panel Derecho: Lienzo del PDF */
+        .panel-derecho { flex: 1; background: #222; border-radius: 8px; border: 1px solid #444; display: flex; justify-content: center; align-items: flex-start; overflow: auto; padding: 20px; position: relative; }
+        
+        /* Contenedor relativo para encimar los canvas */
+        .canvas-container { position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5 ); }
+        #pdf-canvas { display: block; }
+        #draw-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; z-index: 10; }
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <div id="chat-window">
-        <div class="message ia-message">Hola, soy tu asistente de base de datos. ¿Qué información necesitas de la tabla de registros?</div>
+    <div class="header">
+        <h1>🛠️ Admin: Creador de Plantillas Visual</h1>
+        <span style="color: #2ecc71; font-weight: bold;" id="status-db">Conectando a BD...</span>
     </div>
-    <div id="input-area">
-        <input type="text" id="user-input" placeholder="Ej: busca al paciente Juan Perez...">
-        <button id="send-button">→</button>
+
+    <div class="main-container">
+        <!-- PANEL IZQUIERDO -->
+        <div class="panel-izquierdo">
+            <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px;">1. Datos de la Plantilla</h3>
+            
+            <div class="input-group">
+                <label>Nombre del Documento</label>
+                <input type="text" id="tpl-nombre" placeholder="Ej: Carta Notarial Simple">
+            </div>
+            <div class="input-group">
+                <label>Tipo de Documento</label>
+                <select id="tpl-tipo">
+                    <option value="ia">Generado por IA (Texto nuevo)</option>
+                    <option value="rellenado">Rellenado (PDF fijo)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Descripción (Para el cliente)</label>
+                <textarea id="tpl-desc" rows="2" placeholder="Ej: Ideal para renuncias..."></textarea>
+            </div>
+            <div class="input-group">
+                <label>Subir PDF Base (Fondo)</label>
+                <input type="file" id="pdf-upload" accept="application/pdf">
+            </div>
+
+            <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 10px;">2. Campos Marcados</h3>
+            <p style="font-size: 12px; color: #aaa;">Dibuja rectángulos en el PDF de la derecha para crear campos.</p>
+            
+            <ul class="campos-lista" id="lista-campos">
+                <li style="color: #666; font-size: 13px; text-align: center;">No hay campos aún</li>
+            </ul>
+
+            <button class="btn-primary" onclick="guardarPlantilla()">💾 Guardar Plantilla en BD</button>
+        </div>
+
+        <!-- PANEL DERECHO (LIENZO) -->
+        <div class="panel-derecho" id="panel-lienzo">
+            <div class="canvas-container" id="canvas-wrapper" style="display: none;">
+                <canvas id="pdf-canvas"></canvas>
+                <canvas id="draw-canvas"></canvas>
+            </div>
+            <div id="mensaje-vacio" style="color: #666; margin-top: 100px;">
+                Sube un PDF a la izquierda para empezar a marcar coordenadas.
+            </div>
+        </div>
     </div>
-</div>
 
 <script>
-    // Tus claves de Supabase (¡estas son públicas y seguras de poner aquí!)
-    const supabaseUrl = 'https://esiklpxyectbekxvajnw.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
+    // 1. CONFIGURACIÓN DE SUPABASE (Con tus credenciales exactas)
+    const supabaseUrl = 'https://wpzddhmllctdsiuxenss.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwemRkaG1sbGN0ZHNpdXhlbnNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjUyNzQsImV4cCI6MjA5OTU0MTI3NH0.hwSxJ3Sk_RlgbvFyr8S64XRuxW7j55BU4gaIneFTuhY';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
 
-    const chatWindow = document.getElementById('chat-window');
-    const userInput = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
+    // Configurar el Worker de PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    sendButton.addEventListener('click', handleUserMessage);
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            handleUserMessage();
+    // Variables Globales
+    let camposDibujados = [];
+    let isDrawing = false;
+    let startX = 0, startY = 0;
+    const drawCanvas = document.getElementById('draw-canvas' );
+    const ctx = drawCanvas.getContext('2d');
+
+    // Verificar conexión
+    async function testConnection() {
+        const { data, error } = await supabase.from('plantillas').select('id').limit(1);
+        const statusEl = document.getElementById('status-db');
+        if (error) {
+            statusEl.innerText = '❌ Error de BD';
+            statusEl.style.color = '#e74c3c';
+            console.error(error);
+        } else {
+            statusEl.innerText = '✅ BD Conectada';
         }
+    }
+    testConnection();
+
+    // 2. LÓGICA PARA RENDERIZAR EL PDF
+    document.getElementById('pdf-upload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file.type !== 'application/pdf') return alert('Por favor, sube un archivo PDF.');
+
+        const reader = new FileReader();
+        reader.onload = async function() {
+            const typedarray = new Uint8Array(this.result);
+            
+            // Cargar el PDF
+            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+            const page = await pdf.getPage(1); // Solo la página 1 por ahora
+
+            const scale = 1.5; // Escala para que se vea bien
+            const viewport = page.getViewport({ scale: scale });
+
+            // Configurar Canvas del PDF
+            const pdfCanvas = document.getElementById('pdf-canvas');
+            const pdfCtx = pdfCanvas.getContext('2d');
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.width = viewport.width;
+
+            // Configurar Canvas de Dibujo (Mismo tamaño)
+            drawCanvas.height = viewport.height;
+            drawCanvas.width = viewport.width;
+
+            // Renderizar la página en el canvas
+            const renderContext = { canvasContext: pdfCtx, viewport: viewport };
+            await page.render(renderContext).promise;
+
+            // Mostrar el contenedor
+            document.getElementById('mensaje-vacio').style.display = 'none';
+            document.getElementById('canvas-wrapper').style.display = 'block';
+            
+            camposDibujados = []; // Reiniciar campos
+            actualizarListaCampos();
+            redibujarCampos();
+        };
+        reader.readAsArrayBuffer(file);
     });
 
-    function addMessage(text, type, isRawJson = false) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', type);
-        if (isRawJson) {
-            messageDiv.innerHTML = `<pre>${text}</pre>`;
-        } else {
-            messageDiv.textContent = text;
+    // 3. LÓGICA PARA DIBUJAR RECTÁNGULOS (COORDENADAS)
+    drawCanvas.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        const rect = drawCanvas.getBoundingClientRect();
+        startX = e.clientX - rect.left;
+        startY = e.clientY - rect.top;
+    });
+
+    drawCanvas.addEventListener('mousemove', (e) => {
+        if (!isDrawing) return;
+        const rect = drawCanvas.getBoundingClientRect();
+        const currentX = e.clientX - rect.left;
+        const currentY = e.clientY - rect.top;
+
+        redibujarCampos(); // Mantener los anteriores
+        
+        // Dibujar el rectángulo actual (Azul semitransparente)
+        ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
+        ctx.fillRect(startX, startY, currentX - startX, currentY - startY);
+        ctx.strokeStyle = '#3498db';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+    });
+
+    drawCanvas.addEventListener('mouseup', (e) => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        
+        const rect = drawCanvas.getBoundingClientRect();
+        const endX = e.clientX - rect.left;
+        const endY = e.clientY - rect.top;
+
+        const width = endX - startX;
+        const height = endY - startY;
+
+        // Ignorar clics accidentales (muy pequeños)
+        if (Math.abs(width) < 10 || Math.abs(height) < 10) {
+            redibujarCampos();
+            return;
         }
-        chatWindow.appendChild(messageDiv);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
+
+        // Preguntar el nombre del campo
+        const nombreCampo = prompt("¿Qué dato va en este recuadro? (Ej: Nombre, DNI, Fecha)");
+        
+        if (nombreCampo && nombreCampo.trim() !== "") {
+            // Guardar las coordenadas exactas
+            camposDibujados.push({
+                nombre: nombreCampo.trim(),
+                x: Math.min(startX, endX),
+                y: Math.min(startY, endY),
+                ancho: Math.abs(width),
+                alto: Math.abs(height)
+            });
+            actualizarListaCampos();
+        }
+        redibujarCampos();
+    });
+
+    function redibujarCampos() {
+        ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        camposDibujados.forEach(campo => {
+            ctx.fillStyle = 'rgba(46, 204, 113, 0.3)'; // Verde
+            ctx.fillRect(campo.x, campo.y, campo.ancho, campo.alto);
+            ctx.strokeStyle = '#2ecc71';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(campo.x, campo.y, campo.ancho, campo.alto);
+            
+            // Etiqueta de texto
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(campo.nombre, campo.x + 5, campo.y + 15);
+        });
     }
 
-    async function handleUserMessage() {
-        const pregunta = userInput.value.trim();
-        if (!pregunta) return;
+    function actualizarListaCampos() {
+        const lista = document.getElementById('lista-campos');
+        lista.innerHTML = '';
+        if (camposDibujados.length === 0) {
+            lista.innerHTML = '<li style="color: #666; font-size: 13px; text-align: center;">No hay campos aún</li>';
+            return;
+        }
 
-        addMessage(pregunta, 'user-message');
-        userInput.value = '';
-        addMessage('Pensando...', 'ia-message', false);
+        camposDibujados.forEach((campo, index) => {
+            lista.innerHTML += `
+                <li class="campo-item">
+                    <span><strong>${campo.nombre}</strong>   
+<span style="font-size:10px; color:#aaa;">(X: ${Math.round(campo.x)}, Y: ${Math.round(campo.y)})</span></span>
+                    <button class="btn-delete" onclick="borrarCampo(${index})">❌</button>
+                </li>
+            `;
+        });
+    }
+
+    function borrarCampo(index) {
+        camposDibujados.splice(index, 1);
+        actualizarListaCampos();
+        redibujarCampos();
+    }
+
+    // 4. GUARDAR EN SUPABASE
+    async function guardarPlantilla() {
+        const nombre = document.getElementById('tpl-nombre').value.trim();
+        const tipo = document.getElementById('tpl-tipo').value;
+        const desc = document.getElementById('tpl-desc').value.trim();
+
+        if (!nombre) return alert("Por favor, ponle un nombre a la plantilla.");
+        if (camposDibujados.length === 0) return alert("Debes dibujar al menos un campo en el PDF.");
+
+        // Construimos el JSONB mágico
+        const configuracionJSON = {
+            elementos: camposDibujados
+        };
 
         try {
-            // 1. Llamar a la Edge Function para que la IA convierta la pregunta en un plan JSON
-            const { data: plan, error: planError } = await supabase.functions.invoke('chat-con-ia', {
-                body: { pregunta },
-            });
+            const { data, error } = await supabase.from('plantillas').insert([{
+                nombre: nombre,
+                tipo: tipo,
+                descripcion: desc,
+                configuracion: configuracionJSON
+            }]);
 
-            if (planError) throw planError;
-            if (plan.error) throw new Error(plan.error);
+            if (error) throw error;
+
+            alert("✅ ¡Plantilla guardada exitosamente en Supabase!");
             
-            // Mostramos el plan que generó la IA (muy útil para depurar)
-            document.querySelector('.ia-message:last-child').remove(); // Quita el "Pensando..."
-            addMessage('Plan de la IA:\n' + JSON.stringify(plan, null, 2), 'ia-message', true);
+            // Limpiar formulario
+            document.getElementById('tpl-nombre').value = '';
+            document.getElementById('tpl-desc').value = '';
+            camposDibujados = [];
+            actualizarListaCampos();
+            redibujarCampos();
 
-            // 2. Construir y ejecutar la consulta de Supabase basada en el plan de la IA
-            let query = supabase.from(plan.tabla).select(plan.columnas);
-
-            if (plan.filtros && plan.filtros.length > 0) {
-                plan.filtros.forEach(filtro => {
-                    query = query[filtro.operador](filtro.columna, filtro.valor);
-                });
-            }
-            
-            if (plan.accion === 'count') {
-                query = query.select('*', { count: 'exact', head: true });
-            }
-
-            const { data: resultados, error: dbError, count } = await query;
-
-            if (dbError) throw dbError;
-
-            // 3. Mostrar los resultados al usuario
-            if (plan.accion === 'count') {
-                addMessage(`Respuesta: Se encontraron ${count} registros.`, 'ia-message');
-            } else if (resultados.length === 0) {
-                addMessage('No encontré resultados para tu consulta.', 'ia-message');
-            } else {
-                const respuestaFormateada = 'Resultados:\n' + JSON.stringify(resultados, null, 2);
-                addMessage(respuestaFormateada, 'ia-message', true);
-            }
-
-        } catch (error) {
-            console.error('Error en el proceso:', error);
-            document.querySelector('.ia-message:last-child').remove(); // Quita el "Pensando..."
-            addMessage(`Error: ${error.message}`, 'error-message');
+        } catch (err) {
+            alert("❌ Error al guardar: " + err.message);
         }
     }
 </script>
-
 </body>
 </html>
