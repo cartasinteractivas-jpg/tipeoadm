@@ -247,8 +247,7 @@
     }
 
 
-
-        // ==========================================
+    // ==========================================
     // 4. ARQUITECTO DE FORMATOS (MOTOR VISUAL)
     // ==========================================
     let currentFileBase64 = null;
@@ -284,12 +283,9 @@
     });
 
     async function renderPDF(dataUrl) {
-        const base64Data = dataUrl.split(',')[1];
-        const binaryData = atob(base64Data);
-        const array = new Uint8Array(binaryData.length);
-        for (let i = 0; i < binaryData.length; i++) array[i] = binaryData.charCodeAt(i);
-        
-        const pdf = await pdfjsLib.getDocument({ data: array }).promise;
+        // Corregido: Referencia directa a pdfjsLib
+        const loadingTask = pdfjsLib.getDocument({ data: atob(dataUrl.split(',')[1]) });
+        const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({ scale: 1.5 });
         
@@ -312,7 +308,7 @@
     function setupCanvases(w, h) {
         mainCanvas.width = drawCanvas.width = w;
         mainCanvas.height = drawCanvas.height = h;
-        areasMarcadas = [];
+        // No limpiamos áreasMarcadas aquí para permitir la edición
         redibujarAreas();
     }
 
@@ -332,6 +328,7 @@
         tempRect = { x: Math.min(startX, curX), y: Math.min(startY, curY), w: Math.abs(curX - startX), h: Math.abs(curY - startY) };
         redibujarAreas();
         ctxDraw.strokeStyle = '#2ecc71';
+        ctxDraw.lineWidth = 2;
         ctxDraw.strokeRect(tempRect.x, tempRect.y, tempRect.w, tempRect.h);
     };
 
@@ -363,6 +360,7 @@
             ctxDraw.fillStyle = 'rgba(155, 89, 182, 0.2)';
             ctxDraw.fillRect(a.x, a.y, a.w, a.h);
             ctxDraw.fillStyle = '#fff';
+            ctxDraw.font = "12px Arial";
             ctxDraw.fillText(a.nombre, a.x + 5, a.y + 15);
         });
     }
@@ -370,9 +368,9 @@
     function actualizarListaAreas() {
         const lista = document.getElementById('lista-areas');
         lista.innerHTML = areasMarcadas.map((a, i) => `
-            <li style="background:#2c3e50; padding:8px; border-radius:4px; margin-bottom:5px; display:flex; justify-content:space-between;">
-                <span>${a.nombre}</span>
-                <button onclick="areasMarcadas.splice(${i},1); redibujarAreas(); actualizarListaAreas();" style="background:none; border:none; color:#e74c3c; cursor:pointer;">✖</button>
+            <li style="background:#2c3e50; padding:8px; border-radius:4px; margin-bottom:5px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:12px;">${a.nombre}</span>
+                <button onclick="areasMarcadas.splice(${i},1); redibujarAreas(); actualizarListaAreas();" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-weight:bold;">✖</button>
             </li>
         `).join('');
     }
@@ -383,39 +381,77 @@
     async function guardarFormato() {
         const nombre = document.getElementById('fmt-nombre').value.trim();
         const categoria = document.getElementById('fmt-categoria').value;
-        if (!nombre || !currentFileBase64 || areasMarcadas.length === 0) return alert("Faltan datos");
+        if (!nombre || !currentFileBase64 || areasMarcadas.length === 0) return alert("Faltan datos (Nombre, Archivo o Áreas)");
 
         const { error } = await supabase.from('plantillas').insert([{
-            nombre, tipo: 'inteligente', descripcion: categoria,
+            nombre, 
+            tipo: 'inteligente', 
+            descripcion: categoria,
             configuracion: { fondo: currentFileBase64, tipoFondo: currentFileType, areas: areasMarcadas }
         }]);
 
-        if (error) alert("Error");
-        else { alert("✅ Guardado"); location.reload(); }
+        if (error) alert("Error al guardar: " + error.message);
+        else { alert("✅ Formato guardado correctamente"); location.reload(); }
     }
 
     async function cargarFormatos() {
-        const { data, error } = await supabase.from('plantillas').select('*').eq('tipo', 'inteligente').order('created_at', { ascending: false });
+        // Corregido: Quitamos el filtro estricto para ver todo
+        const { data, error } = await supabase.from('plantillas').select('*').order('created_at', { ascending: false });
         const container = document.getElementById('formatos-container');
-        if (error || !data.length) return container.innerHTML = '<p style="color:#888;">No hay formatos inteligentes.</p>';
+        if (error) return container.innerHTML = '<p style="color:red;">Error al cargar.</p>';
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p style="color:#888;">No hay formatos creados aún.</p>';
+            return;
+        }
         
         container.innerHTML = data.map(f => `
             <div class="formato-card">
-                <h3>${f.nombre}</h3>
-                <p style="font-size:12px; color:#aaa;">Categoría: ${f.descripcion}</p>
+                <div style="display:flex; justify-content:space-between; align-items:start;">
+                    <h3>${f.nombre}</h3>
+                    <span style="font-size:10px; background:#444; padding:2px 5px; border-radius:4px;">${f.tipo}</span>
+                </div>
+                <p style="font-size:12px; color:#aaa; margin: 5px 0;">Categoría: ${f.descripcion || 'Sin categoría'}</p>
                 <div style="margin-top:10px; display:flex; gap:10px;">
-                    <button class="btn-danger" style="flex:1;" onclick="borrarFormato(${f.id})">🗑️ Borrar</button>
+                    <button class="btn-primary" style="flex:1; padding:8px; font-size:12px;" onclick="editarFormato(${f.id})">✏️ Editar</button>
+                    <button class="btn-danger" style="flex:1; padding:8px; font-size:12px;" onclick="borrarFormato(${f.id})">🗑️ Borrar</button>
                 </div>
             </div>
         `).join('');
     }
 
+    async function editarFormato(id) {
+        const { data, error } = await supabase.from('plantillas').select('*').eq('id', id).single();
+        if (error || !data) return alert("No se pudo cargar el formato.");
+
+        // Cambiar a la pestaña de creador
+        openTab('tab-creador', document.querySelectorAll('.tab-btn')[2]);
+        
+        // Llenar datos básicos
+        document.getElementById('fmt-nombre').value = data.nombre;
+        document.getElementById('fmt-categoria').value = data.descripcion || 'carta';
+        
+        // Cargar configuración
+        if (data.configuracion) {
+            currentFileBase64 = data.configuracion.fondo;
+            currentFileType = data.configuracion.tipoFondo;
+            areasMarcadas = data.configuracion.areas || [];
+            
+            document.getElementById('msg-vacio').style.display = 'none';
+            document.getElementById('canvas-wrapper').style.display = 'block';
+            document.getElementById('config-areas').style.display = 'block';
+            
+            if (currentFileType === 'pdf') renderPDF(currentFileBase64);
+            else renderImage(currentFileBase64);
+            
+            actualizarListaAreas();
+        }
+    }
+
     async function borrarFormato(id) {
-        if (confirm("¿Borrar formato?")) {
-            await supabase.from('plantillas').delete().eq('id', id);
-            cargarFormatos();
+        if (confirm("¿Estás seguro de borrar este formato?")) {
+            const { error } = await supabase.from('plantillas').delete().eq('id', id);
+            if (error) alert("Error"); else cargarFormatos();
         }
     }
 </script>
-</body>
-</html>
