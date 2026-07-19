@@ -245,7 +245,10 @@
         await supabase.from('usuarios_codigos').delete().eq('id', id);
         cargarCodigos();
     }
-    // ==========================================
+
+
+
+        // ==========================================
     // 4. ARQUITECTO DE FORMATOS (MOTOR VISUAL)
     // ==========================================
     let currentFileBase64 = null;
