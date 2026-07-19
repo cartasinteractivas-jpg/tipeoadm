@@ -127,40 +127,64 @@
 
     <!-- PESTAÑA 2: CREADOR DE PLANTILLAS VISUAL -->
     <div id="tab-plantillas" class="tab-content">
-        <!-- PANEL IZQUIERDO -->
+
+
+
+
+
+                <!-- PANEL IZQUIERDO -->
         <div class="panel-izquierdo">
             <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px;">1. Datos de la Plantilla</h3>
             
             <div class="input-group">
                 <label>Nombre del Documento</label>
-                <input type="text" id="tpl-nombre" placeholder="Ej: Carta Notarial Simple">
+                <input type="text" id="tpl-nombre" placeholder="Ej: Contrato de Alquiler">
             </div>
             <div class="input-group">
                 <label>Tipo de Documento</label>
-                <select id="tpl-tipo">
+                <select id="tpl-tipo" onchange="cambiarModoPlantilla()">
                     <option value="ia">Generado por IA (Texto nuevo)</option>
-                    <option value="rellenado">Rellenado (PDF fijo)</option>
+                    <option value="rellenado" selected>Rellenado (PDF fijo)</option>
                 </select>
             </div>
             <div class="input-group">
                 <label>Descripción (Para el cliente)</label>
-                <textarea id="tpl-desc" rows="2" placeholder="Ej: Ideal para renuncias..."></textarea>
-            </div>
-            <div class="input-group">
-                <label>Subir PDF Base (Fondo)</label>
-                <input type="file" id="pdf-upload" accept="application/pdf">
+                <textarea id="tpl-desc" rows="2" placeholder="Ej: Ideal para alquiler de cuartos..."></textarea>
             </div>
 
-            <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 10px;">2. Campos Marcados</h3>
-            <p style="font-size: 12px; color: #aaa;">Dibuja rectángulos en el PDF de la derecha para crear campos.</p>
-            
-            <ul class="campos-lista" id="lista-campos">
-                <li style="color: #666; font-size: 13px; text-align: center;">No hay campos aún</li>
-            </ul>
+            <!-- SECCIÓN A: MODO RELLENADO (PDF) -->
+            <div id="seccion-pdf-admin">
+                <div class="input-group">
+                    <label>Subir PDF Base (Fondo)</label>
+                    <input type="file" id="pdf-upload" accept="application/pdf">
+                </div>
+                <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 10px;">2. Campos Marcados</h3>
+                <p style="font-size: 12px; color: #aaa;">Dibuja rectángulos en el PDF de la derecha para crear campos.</p>
+                <ul class="campos-lista" id="lista-campos">
+                    <li style="color: #666; font-size: 13px; text-align: center;">No hay campos aún</li>
+                </ul>
+            </div>
 
-            <button class="btn-primary" onclick="guardarPlantilla()">💾 Guardar Plantilla en BD</button>
+            <!-- SECCIÓN B: MODO IA (PREGUNTAS DINÁMICAS) -->
+            <div id="seccion-ia-admin" style="display: none;">
+                <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 10px;">2. Preguntas para la IA</h3>
+                <p style="font-size: 12px; color: #aaa;">¿Qué datos le pedirás al cliente para redactar esto?</p>
+                
+                <div class="input-group" style="margin-top: 10px;">
+                    <input type="text" id="nueva-pregunta-ia" placeholder="Ej: Nombre del Arrendador">
+                    <button class="btn-blue" onclick="agregarPreguntaIA()" style="margin-top: 5px;">➕ Añadir Pregunta</button>
+                </div>
+                
+                <ul class="campos-lista" id="lista-preguntas-ia">
+                    <li style="color: #666; font-size: 13px; text-align: center;">No hay preguntas aún</li>
+                </ul>
+            </div>
+
+            <button class="btn-primary" onclick="guardarPlantilla()" style="margin-top: 15px;">💾 Guardar Plantilla en BD</button>
         </div>
 
+
+        
         <!-- PANEL DERECHO (LIENZO) -->
         <div class="panel-derecho" id="panel-lienzo">
             <div class="canvas-container" id="canvas-wrapper" style="display: none;">
@@ -441,15 +465,75 @@
         redibujarCampos();
     }
 
+
+
+
+
+        // --- LÓGICA DE MODOS (IA vs RELLENADO) ---
+    let preguntasIA = [];
+
+    function cambiarModoPlantilla() {
+        const tipo = document.getElementById('tpl-tipo').value;
+        if (tipo === 'ia') {
+            document.getElementById('seccion-pdf-admin').style.display = 'none';
+            document.getElementById('panel-lienzo').style.display = 'none'; // Ocultar el lienzo
+            document.getElementById('seccion-ia-admin').style.display = 'block';
+        } else {
+            document.getElementById('seccion-pdf-admin').style.display = 'block';
+            document.getElementById('panel-lienzo').style.display = 'flex'; // Mostrar el lienzo
+            document.getElementById('seccion-ia-admin').style.display = 'none';
+        }
+    }
+
+    function agregarPreguntaIA() {
+        const input = document.getElementById('nueva-pregunta-ia');
+        const pregunta = input.value.trim();
+        if (!pregunta) return;
+        
+        preguntasIA.push(pregunta);
+        input.value = '';
+        actualizarListaPreguntasIA();
+    }
+
+    function actualizarListaPreguntasIA() {
+        const lista = document.getElementById('lista-preguntas-ia');
+        lista.innerHTML = '';
+        if (preguntasIA.length === 0) {
+            lista.innerHTML = '<li style="color: #666; font-size: 13px; text-align: center;">No hay preguntas aún</li>';
+            return;
+        }
+        preguntasIA.forEach((preg, index) => {
+            lista.innerHTML += `
+                <li class="campo-item">
+                    <span><strong>${preg}</strong></span>
+                    <button class="btn-danger" style="padding: 4px 8px;" onclick="borrarPreguntaIA(${index})">❌</button>
+                </li>
+            `;
+        });
+    }
+
+    function borrarPreguntaIA(index) {
+        preguntasIA.splice(index, 1);
+        actualizarListaPreguntasIA();
+    }
+
+    // --- GUARDAR PLANTILLA (ACTUALIZADO) ---
     async function guardarPlantilla() {
         const nombre = document.getElementById('tpl-nombre').value.trim();
         const tipo = document.getElementById('tpl-tipo').value;
         const desc = document.getElementById('tpl-desc').value.trim();
 
         if (!nombre) return alert("Por favor, ponle un nombre a la plantilla.");
-        if (camposDibujados.length === 0) return alert("Debes dibujar al menos un campo en el PDF.");
 
-        const configuracionJSON = { elementos: camposDibujados };
+        let configuracionJSON = {};
+
+        if (tipo === 'ia') {
+            if (preguntasIA.length === 0) return alert("Debes añadir al menos una pregunta para la IA.");
+            configuracionJSON = { preguntas: preguntasIA };
+        } else {
+            if (camposDibujados.length === 0) return alert("Debes dibujar al menos un campo en el PDF.");
+            configuracionJSON = { elementos: camposDibujados };
+        }
 
         try {
             const { data, error } = await supabase.from('plantillas').insert([{
@@ -463,16 +547,24 @@
 
             alert("✅ ¡Plantilla guardada exitosamente en Supabase!");
             
+            // Limpiar formulario
             document.getElementById('tpl-nombre').value = '';
             document.getElementById('tpl-desc').value = '';
             camposDibujados = [];
+            preguntasIA = [];
             actualizarListaCampos();
-            redibujarCampos();
+            actualizarListaPreguntasIA();
+            if(tipo === 'rellenado') redibujarCampos();
 
         } catch (err) {
             alert("❌ Error al guardar: " + err.message);
         }
     }
+
+
+
+
+    
 </script>
 </body>
 </html>
