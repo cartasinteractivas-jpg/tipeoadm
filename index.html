@@ -5,72 +5,102 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Pro - DocuFácil</title>
     
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
+    <!-- PDF.js para renderizar el PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: #121212; color: #fff; padding: 20px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121212; color: #ffffff; padding: 20px; display: flex; flex-direction: column; height: 100vh; }
         
-        .header { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #9b59b6; display: flex; justify-content: space-between; align-items: center; }
-        
+        .header { background: #1e1e1e; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #9b59b6; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { color: #9b59b6; font-size: 22px; }
+
+        /* Pestañas */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .tab-btn { background: transparent; color: #888; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        .tab-btn { background: transparent; color: #888; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; transition: 0.3s; }
+        .tab-btn:hover { color: #fff; background: #222; }
         .tab-btn.active { color: #fff; background: #9b59b6; }
+        
+        .tab-content { display: none; flex: 1; overflow: hidden; }
+        .tab-content.active { display: flex; }
 
-        .panel { display: none; background: #1e1e1e; padding: 20px; border-radius: 8px; }
-        .panel.active { display: flex; gap: 20px; }
-
-        /* Panel Izquierdo: Configuración */
-        .config-side { width: 350px; display: flex; flex-direction: column; gap: 15px; }
-        .input-group { display: flex; flex-direction: column; gap: 5px; }
-        .input-group label { color: #ccc; font-size: 13px; font-weight: bold; }
+        /* Estilos Generales */
+        .panel { background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+        .input-group label { color: #ccc; font-weight: bold; font-size: 13px; }
         .input-group input, .input-group select, .input-group textarea { padding: 10px; background: #000; color: #fff; border: 1px solid #444; border-radius: 5px; outline: none; }
         
-        .btn { padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn-primary { background: #9b59b6; color: white; }
-        .btn-success { background: #2ecc71; color: #000; }
-        .btn-danger { background: #e74c3c; color: white; }
+        .btn-primary { background: #9b59b6; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-success { background: #2ecc71; color: #000; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-danger { background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
-        /* Panel Derecho: Lienzo */
-        .canvas-side { flex: 1; background: #222; border-radius: 8px; border: 1px solid #444; display: flex; justify-content: center; padding: 20px; overflow: auto; position: relative; min-height: 600px; }
-        .canvas-wrapper { position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5 ); }
-        #main-canvas { display: block; }
+        /* Tabla de Códigos */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #222; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #444; }
+        th { background: #333; color: #f1c40f; }
+
+        /* Creador Visual */
+        .panel-izquierdo { width: 350px; background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .panel-derecho { flex: 1; background: #222; border-radius: 8px; border: 1px solid #444; display: flex; justify-content: center; align-items: flex-start; overflow: auto; padding: 20px; position: relative; margin-left: 20px; }
+        .canvas-container { position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5 ); }
         #draw-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; z-index: 10; }
 
         /* Lista de Formatos */
         .formatos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; width: 100%; }
         .formato-card { background: #2a2a2a; padding: 15px; border-radius: 8px; border: 1px solid #444; }
-        .formato-card h3 { color: #f1c40f; margin-bottom: 10px; }
-        .formato-actions { display: flex; gap: 10px; margin-top: 10px; }
-
-        /* Lista de Áreas */
-        .areas-lista { list-style: none; margin-top: 10px; }
-        .area-item { background: #2c3e50; padding: 8px; border-radius: 4px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>🛠️ Admin Pro: Arquitecto de Formatos</h1>
-        <span id="status-db" style="color: #2ecc71;">Conectado</span>
+        <h1>🛠️ Admin Pro: DocuFácil</h1>
+        <span style="color: #2ecc71; font-weight: bold;" id="status-db">Conectando...</span>
     </div>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('lista')">📋 Mis Formatos</button>
-        <button class="tab-btn" onclick="switchTab('creador')">➕ Crear Nuevo Formato</button>
+        <button class="tab-btn active" onclick="openTab('tab-codigos', this)">🎟️ Gestión de Códigos</button>
+        <button class="tab-btn" onclick="openTab('tab-lista', this)">📋 Mis Formatos</button>
+        <button class="tab-btn" onclick="openTab('tab-creador', this)">➕ Arquitecto de Formatos</button>
     </div>
 
-    <!-- PESTAÑA: LISTA DE FORMATOS -->
-    <div id="panel-lista" class="panel active" style="flex-direction: column;">
-        <div class="formatos-grid" id="formatos-container">
-            <!-- Se llena con JS -->
+    <!-- PESTAÑA 1: GESTIÓN DE CÓDIGOS (RESTAURADA) -->
+    <div id="tab-codigos" class="tab-content active" style="flex-direction: column;">
+        <div class="panel" style="display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap;">
+            <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label>Nuevo Código</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="nuevo-codigo" placeholder="Ej: JUAN-123" style="flex: 1;">
+                    <button class="btn-primary" onclick="generarCodigoRandom()">🎲 Aleatorio</button>
+                </div>
+            </div>
+            <div class="input-group" style="width: 150px;">
+                <label>Créditos</label>
+                <input type="number" id="nuevo-creditos" value="5" min="1">
+            </div>
+            <button class="btn-success" onclick="crearCodigo()" style="height: 42px; margin-bottom: 15px;">➕ Crear Código</button>
+        </div>
+        <div class="panel" style="flex: 1; margin-top: 20px;">
+            <table>
+                <thead>
+                    <tr><th>Código</th><th>Créditos</th><th>Fecha</th><th>Acciones</th></tr>
+                </thead>
+                <tbody id="tabla-codigos"></tbody>
+            </table>
         </div>
     </div>
 
-    <!-- PESTAÑA: CREADOR VISUAL -->
-    <div id="panel-creador" class="panel">
-        <div class="config-side">
+    <!-- PESTAÑA 2: MIS FORMATOS (NUEVA) -->
+    <div id="tab-lista" class="tab-content" style="flex-direction: column;">
+        <div class="panel">
+            <div class="formatos-grid" id="formatos-container"></div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 3: ARQUITECTO DE FORMATOS (MEJORADA) -->
+    <div id="tab-creador" class="tab-content">
+        <div class="panel-izquierdo">
             <div class="input-group">
                 <label>Nombre del Formato</label>
                 <input type="text" id="fmt-nombre" placeholder="Ej: Solicitud de Vacaciones">
@@ -82,25 +112,20 @@
                     <option value="solicitud">Solicitud</option>
                     <option value="contrato">Contrato</option>
                     <option value="curriculum">Curriculum</option>
-                    <option value="otro">Otro</option>
                 </select>
             </div>
             <div class="input-group">
                 <label>Subir Modelo (PDF, JPG, PNG)</label>
                 <input type="file" id="file-upload" accept="application/pdf,image/*">
             </div>
-
             <div id="config-areas" style="display: none;">
-                <h3 style="border-bottom: 1px solid #444; padding-bottom: 5px; margin-top: 10px;">Marcar Áreas</h3>
-                <p style="font-size: 11px; color: #aaa;">Dibuja un cuadro y elige qué parte es:</p>
-                <ul class="areas-lista" id="lista-areas"></ul>
+                <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 5px;">Áreas Marcadas</h3>
+                <ul id="lista-areas" style="list-style:none; margin-top:10px;"></ul>
             </div>
-
-            <button class="btn btn-success" onclick="guardarFormato()" style="margin-top: 20px;">💾 Guardar Formato</button>
+            <button class="btn-success" onclick="guardarFormato()" style="margin-top: 20px;">💾 Guardar Formato</button>
         </div>
-
-        <div class="canvas-side">
-            <div class="canvas-wrapper" id="canvas-wrapper" style="display: none;">
+        <div class="panel-derecho">
+            <div class="canvas-container" id="canvas-wrapper" style="display: none;">
                 <canvas id="main-canvas"></canvas>
                 <canvas id="draw-canvas"></canvas>
             </div>
@@ -108,7 +133,7 @@
         </div>
     </div>
 
-    <!-- MODAL PARA ELEGIR TIPO DE ÁREA -->
+    <!-- MODAL DE ÁREAS -->
     <div id="modal-area" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center;">
         <div style="background: #222; padding: 20px; border-radius: 10px; width: 300px;">
             <h3 style="margin-bottom: 15px; text-align: center;">¿Qué área es esta?</h3>
@@ -118,11 +143,10 @@
                 <option value="destinatario">🏢 Datos Destinatario</option>
                 <option value="cuerpo">📝 Cuerpo del Texto (IA)</option>
                 <option value="firma">✍️ Área de Firma</option>
-                <option value="otro">🔹 Otro Dato</option>
             </select>
             <div style="display: flex; gap: 10px;">
-                <button class="btn btn-danger" style="flex: 1;" onclick="cancelarArea()">Cancelar</button>
-                <button class="btn btn-success" style="flex: 1;" onclick="confirmarArea()">Aceptar</button>
+                <button class="btn-danger" style="flex: 1;" onclick="cancelarArea()">Cancelar</button>
+                <button class="btn-success" style="flex: 1;" onclick="confirmarArea()">Aceptar</button>
             </div>
         </div>
     </div>
@@ -130,46 +154,110 @@
     // ==========================================
     // 1. CONFIGURACIÓN DE SUPABASE
     // ==========================================
-    const supabaseUrl = 'TU_SUPABASE_URL'; // Pon tu URL real
-    const supabaseKey = 'TU_SUPABASE_KEY'; // Pon tu KEY real
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    const supabaseUrl = 'https://wpzddhmllctdsiuxenss.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwemRkaG1sbGN0ZHNpdXhlbnNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjUyNzQsImV4cCI6MjA5OTU0MTI3NH0.hwSxJ3Sk_RlgbvFyr8S64XRuxW7j55BU4gaIneFTuhY';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
+
+    // Configurar el Worker de PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     // ==========================================
-    // 2. VARIABLES GLOBALES
+    // 2. INICIO Y PESTAÑAS
+    // ==========================================
+    async function init( ) {
+        const { data, error } = await supabase.from('usuarios_codigos').select('id').limit(1);
+        const statusEl = document.getElementById('status-db');
+        if (error) {
+            statusEl.innerText = '❌ Error de BD';
+            statusEl.style.color = '#e74c3c';
+        } else {
+            statusEl.innerText = '✅ BD Conectada';
+            cargarCodigos();
+            cargarFormatos();
+        }
+    }
+    init();
+
+    function openTab(tabId, btnElement) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btnElement.classList.add('active');
+    }
+
+    // ==========================================
+    // 3. GESTIÓN DE CÓDIGOS (RESTAURADA)
+    // ==========================================
+    function generarCodigoRandom() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = 'DOC-';
+        for (let i = 0; i < 6; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+        document.getElementById('nuevo-codigo').value = result;
+    }
+
+    async function cargarCodigos() {
+        const { data, error } = await supabase.from('usuarios_codigos').select('*').order('fecha_creacion', { ascending: false });
+        const tbody = document.getElementById('tabla-codigos');
+        if (error) return tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Error</td></tr>`;
+        
+        tbody.innerHTML = '';
+        data.forEach(row => {
+            const fecha = new Date(row.fecha_creacion).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong style="color: #9b59b6;">${row.codigo}</strong></td>
+                    <td><span style="background: #2ecc71; color: #000; padding: 4px 10px; border-radius: 12px; font-weight: bold;">${row.creditos}</span></td>
+                    <td>${fecha}</td>
+                    <td>
+                        <button class="btn-success" style="padding: 5px 10px;" onclick="recargarCodigo(${row.id}, ${row.creditos}, '${row.codigo}')">🔋</button>
+                        <button class="btn-primary" style="padding: 5px 10px; background: #3498db;" onclick="compartirCodigo('${row.codigo}')">📤</button>
+                        <button class="btn-danger" style="padding: 5px 10px;" onclick="eliminarCodigo(${row.id}, '${row.codigo}')">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    async function crearCodigo() {
+        const codigo = document.getElementById('nuevo-codigo').value.trim().toUpperCase();
+        const creditos = parseInt(document.getElementById('nuevo-creditos').value);
+        if (!codigo || isNaN(creditos)) return alert("Datos incompletos");
+        const { error } = await supabase.from('usuarios_codigos').insert([{ codigo, creditos }]);
+        if (error) alert("Error: " + error.message);
+        else { cargarCodigos(); document.getElementById('nuevo-codigo').value = ''; }
+    }
+
+    async function recargarCodigo(id, actual, codigo) {
+        const extra = prompt(`¿Cuántos créditos quieres sumar al código ${codigo}?`, "5");
+        if (!extra || isNaN(extra)) return;
+        const nuevoTotal = actual + parseInt(extra);
+        const { error } = await supabase.from('usuarios_codigos').update({ creditos: nuevoTotal }).eq('id', id);
+        if (error) alert("Error"); else cargarCodigos();
+    }
+
+    function compartirCodigo(codigo) {
+        const msg = `Hola! Aquí tienes tu código para DocuFácil: *${codigo}*. Úsalo para generar tus documentos.`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg )}`, '_blank');
+    }
+
+    async function eliminarCodigo(id, codigo) {
+        if (!confirm(`¿Eliminar ${codigo}?`)) return;
+        await supabase.from('usuarios_codigos').delete().eq('id', id);
+        cargarCodigos();
+    }
+    // ==========================================
+    // 4. ARQUITECTO DE FORMATOS (MOTOR VISUAL)
     // ==========================================
     let currentFileBase64 = null;
-    let currentFileType = null; // 'pdf' o 'image'
+    let currentFileType = null;
     let areasMarcadas = [];
-    
-    // Variables para dibujar
     let isDrawing = false;
-    let startX, startY;
-    let tempRect = null;
+    let startX, startY, tempRect = null;
 
     const mainCanvas = document.getElementById('main-canvas');
     const drawCanvas = document.getElementById('draw-canvas');
     const ctxDraw = drawCanvas.getContext('2d');
 
-    // ==========================================
-    // 3. NAVEGACIÓN ENTRE PESTAÑAS
-    // ==========================================
-    function switchTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        
-        if(tab === 'lista') {
-            document.querySelectorAll('.tab-btn')[0].classList.add('active');
-            document.getElementById('panel-lista').classList.add('active');
-            cargarFormatos();
-        } else {
-            document.querySelectorAll('.tab-btn')[1].classList.add('active');
-            document.getElementById('panel-creador').classList.add('active');
-        }
-    }
-
-    // ==========================================
-    // 4. CARGA DE ARCHIVOS (PDF O IMAGEN)
-    // ==========================================
     document.getElementById('file-upload').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -183,7 +271,7 @@
             
             if (file.type === 'application/pdf') {
                 currentFileType = 'pdf';
-                await renderPDF(event.target.result);
+                renderPDF(event.target.result);
             } else {
                 currentFileType = 'image';
                 renderImage(event.target.result);
@@ -193,16 +281,13 @@
     });
 
     async function renderPDF(dataUrl) {
-        const pdfjsLib = window['pdfjs-dist/build/pdf'];
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-        
-        const base64Data = dataUrl.split(',' )[1];
+        const base64Data = dataUrl.split(',')[1];
         const binaryData = atob(base64Data);
         const array = new Uint8Array(binaryData.length);
-        for (let i = 0; i < binaryData.length; i++) { array[i] = binaryData.charCodeAt(i); }
+        for (let i = 0; i < binaryData.length; i++) array[i] = binaryData.charCodeAt(i);
         
         const pdf = await pdfjsLib.getDocument({ data: array }).promise;
-        const page = await pdf.getPage(1); // Solo la primera hoja para el modelo
+        const page = await pdf.getPage(1);
         const viewport = page.getViewport({ scale: 1.5 });
         
         setupCanvases(viewport.width, viewport.height);
@@ -213,16 +298,10 @@
     function renderImage(dataUrl) {
         const img = new Image();
         img.onload = () => {
-            let width = img.width;
-            let height = img.height;
-            const maxWidth = 800; // Límite para que no sea gigante en pantalla
-            if (width > maxWidth) {
-                height = height * (maxWidth / width);
-                width = maxWidth;
-            }
-            setupCanvases(width, height);
-            const ctx = mainCanvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
+            let w = img.width, h = img.height;
+            if (w > 800) { h = h * (800 / w); w = 800; }
+            setupCanvases(w, h);
+            mainCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
         };
         img.src = dataUrl;
     }
@@ -234,183 +313,106 @@
         redibujarAreas();
     }
 
-    // ==========================================
-    // 5. MOTOR DE DIBUJO DE ÁREAS
-    // ==========================================
-    drawCanvas.addEventListener('mousedown', (e) => {
+    // --- DIBUJO DE RECTÁNGULOS ---
+    drawCanvas.onmousedown = (e) => {
         isDrawing = true;
         const rect = drawCanvas.getBoundingClientRect();
         startX = e.clientX - rect.left;
         startY = e.clientY - rect.top;
-    });
+    };
 
-    drawCanvas.addEventListener('mousemove', (e) => {
+    drawCanvas.onmousemove = (e) => {
         if (!isDrawing) return;
         const rect = drawCanvas.getBoundingClientRect();
-        const currentX = e.clientX - rect.left;
-        const currentY = e.clientY - rect.top;
-        
-        tempRect = {
-            x: Math.min(startX, currentX),
-            y: Math.min(startY, currentY),
-            w: Math.abs(currentX - startX),
-            h: Math.abs(currentY - startY)
-        };
-        
+        const curX = e.clientX - rect.left;
+        const curY = e.clientY - rect.top;
+        tempRect = { x: Math.min(startX, curX), y: Math.min(startY, curY), w: Math.abs(curX - startX), h: Math.abs(curY - startY) };
         redibujarAreas();
         ctxDraw.strokeStyle = '#2ecc71';
-        ctxDraw.lineWidth = 2;
         ctxDraw.strokeRect(tempRect.x, tempRect.y, tempRect.w, tempRect.h);
-    });
+    };
 
-    drawCanvas.addEventListener('mouseup', () => {
+    drawCanvas.onmouseup = () => {
         if (!isDrawing) return;
         isDrawing = false;
-        
-        // Si el cuadro es muy pequeño, fue un clic por error
-        if (tempRect && tempRect.w > 20 && tempRect.h > 20) {
-            document.getElementById('modal-area').style.display = 'flex';
-        } else {
-            tempRect = null;
-            redibujarAreas();
-        }
-    });
+        if (tempRect && tempRect.w > 10) document.getElementById('modal-area').style.display = 'flex';
+    };
 
-    // ==========================================
-    // 6. MODAL Y GESTIÓN DE ÁREAS
-    // ==========================================
+    function confirmarArea() {
+        const sel = document.getElementById('select-tipo-area');
+        areasMarcadas.push({ ...tempRect, tipo: sel.value, nombre: sel.options[sel.selectedIndex].text });
+        cancelarArea();
+        actualizarListaAreas();
+    }
+
     function cancelarArea() {
         document.getElementById('modal-area').style.display = 'none';
         tempRect = null;
         redibujarAreas();
     }
 
-    function confirmarArea() {
-        const select = document.getElementById('select-tipo-area');
-        const tipo = select.value;
-        const nombreTipo = select.options[select.selectedIndex].text;
-        
-        areasMarcadas.push({ ...tempRect, tipo: tipo, nombre: nombreTipo });
-        
-        document.getElementById('modal-area').style.display = 'none';
-        tempRect = null;
-        redibujarAreas();
-        actualizarListaAreas();
-    }
-
     function redibujarAreas() {
         ctxDraw.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-        areasMarcadas.forEach(area => {
+        areasMarcadas.forEach(a => {
             ctxDraw.strokeStyle = '#9b59b6';
             ctxDraw.lineWidth = 2;
+            ctxDraw.strokeRect(a.x, a.y, a.w, a.h);
             ctxDraw.fillStyle = 'rgba(155, 89, 182, 0.2)';
-            ctxDraw.fillRect(area.x, area.y, area.w, area.h);
-            ctxDraw.strokeRect(area.x, area.y, area.w, area.h);
-            
+            ctxDraw.fillRect(a.x, a.y, a.w, a.h);
             ctxDraw.fillStyle = '#fff';
-            ctxDraw.font = 'bold 14px Arial';
-            ctxDraw.fillText(area.nombre, area.x + 5, area.y + 20);
+            ctxDraw.fillText(a.nombre, a.x + 5, a.y + 15);
         });
     }
 
     function actualizarListaAreas() {
         const lista = document.getElementById('lista-areas');
-        lista.innerHTML = '';
-        areasMarcadas.forEach((area, index) => {
-            lista.innerHTML += `
-                <li class="area-item">
-                    <span>${area.nombre}</span>
-                    <button class="btn-danger" style="padding: 2px 6px; border:none; border-radius:3px; cursor:pointer;" onclick="borrarArea(${index})">✖</button>
-                </li>
-            `;
-        });
-    }
-
-    function borrarArea(index) {
-        areasMarcadas.splice(index, 1);
-        redibujarAreas();
-        actualizarListaAreas();
+        lista.innerHTML = areasMarcadas.map((a, i) => `
+            <li style="background:#2c3e50; padding:8px; border-radius:4px; margin-bottom:5px; display:flex; justify-content:space-between;">
+                <span>${a.nombre}</span>
+                <button onclick="areasMarcadas.splice(${i},1); redibujarAreas(); actualizarListaAreas();" style="background:none; border:none; color:#e74c3c; cursor:pointer;">✖</button>
+            </li>
+        `).join('');
     }
 
     // ==========================================
-    // 7. GUARDAR Y CARGAR FORMATOS (SUPABASE)
+    // 5. GUARDAR Y CARGAR FORMATOS
     // ==========================================
     async function guardarFormato() {
         const nombre = document.getElementById('fmt-nombre').value.trim();
         const categoria = document.getElementById('fmt-categoria').value;
-        
-        if (!nombre) return alert("Ponle un nombre al formato.");
-        if (!currentFileBase64) return alert("Sube un modelo (PDF o Imagen).");
-        if (areasMarcadas.length === 0) return alert("Marca al menos un área en el documento.");
+        if (!nombre || !currentFileBase64 || areasMarcadas.length === 0) return alert("Faltan datos");
 
-        const configuracion = {
-            fondo: currentFileBase64,
-            tipoFondo: currentFileType,
-            areas: areasMarcadas
-        };
+        const { error } = await supabase.from('plantillas').insert([{
+            nombre, tipo: 'inteligente', descripcion: categoria,
+            configuracion: { fondo: currentFileBase64, tipoFondo: currentFileType, areas: areasMarcadas }
+        }]);
 
-        try {
-            const { error } = await supabase.from('plantillas').insert([{
-                nombre: nombre,
-                tipo: 'inteligente', // Etiqueta clave para la nueva App Cliente
-                descripcion: categoria,
-                configuracion: configuracion
-            }]);
-
-            if (error) throw error;
-            alert("✅ Formato guardado con éxito.");
-            
-            // Limpiar y volver a la lista
-            document.getElementById('fmt-nombre').value = '';
-            document.getElementById('file-upload').value = '';
-            document.getElementById('canvas-wrapper').style.display = 'none';
-            document.getElementById('config-areas').style.display = 'none';
-            document.getElementById('msg-vacio').style.display = 'block';
-            currentFileBase64 = null;
-            areasMarcadas = [];
-            actualizarListaAreas();
-            
-            switchTab('lista');
-            
-        } catch (err) {
-            alert("Error al guardar: " + err.message);
-        }
+        if (error) alert("Error");
+        else { alert("✅ Guardado"); location.reload(); }
     }
 
     async function cargarFormatos() {
         const { data, error } = await supabase.from('plantillas').select('*').eq('tipo', 'inteligente').order('created_at', { ascending: false });
-        if (error) return console.error(error);
-        
         const container = document.getElementById('formatos-container');
-        container.innerHTML = '';
+        if (error || !data.length) return container.innerHTML = '<p style="color:#888;">No hay formatos inteligentes.</p>';
         
-        if(data.length === 0) {
-            container.innerHTML = '<p style="color:#888;">No has creado ningún formato inteligente aún.</p>';
-            return;
-        }
-
-        data.forEach(fmt => {
-            container.innerHTML += `
-                <div class="formato-card">
-                    <h3>${fmt.nombre}</h3>
-                    <p style="color:#aaa; font-size:13px; margin-bottom:5px;">Categoría: <span style="color:#fff; text-transform:capitalize;">${fmt.descripcion}</span></p>
-                    <p style="color:#aaa; font-size:13px;">Áreas marcadas: <span style="color:#fff; font-weight:bold;">${fmt.configuracion.areas.length}</span></p>
-                    <div class="formato-actions">
-                        <button class="btn btn-danger" style="flex:1; padding:8px;" onclick="borrarFormato(${fmt.id})">🗑️ Borrar</button>
-                    </div>
+        container.innerHTML = data.map(f => `
+            <div class="formato-card">
+                <h3>${f.nombre}</h3>
+                <p style="font-size:12px; color:#aaa;">Categoría: ${f.descripcion}</p>
+                <div style="margin-top:10px; display:flex; gap:10px;">
+                    <button class="btn-danger" style="flex:1;" onclick="borrarFormato(${f.id})">🗑️ Borrar</button>
                 </div>
-            `;
-        });
+            </div>
+        `).join('');
     }
 
     async function borrarFormato(id) {
-        if(!confirm("¿Seguro que deseas borrar este formato?")) return;
-        await supabase.from('plantillas').delete().eq('id', id);
-        cargarFormatos();
+        if (confirm("¿Borrar formato?")) {
+            await supabase.from('plantillas').delete().eq('id', id);
+            cargarFormatos();
+        }
     }
-
-    // Iniciar cargando la lista
-    cargarFormatos();
 </script>
 </body>
 </html>
