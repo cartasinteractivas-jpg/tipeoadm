@@ -398,13 +398,12 @@
 
     
 
-
-        async function cargarFormatos() {
+    async function cargarFormatos() {
         try {
+            // Corregido: Quitamos el .order('created_at') que causaba el error
             const { data, error } = await supabase
                 .from('plantillas')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('*');
 
             if (error) throw error;
 
@@ -416,8 +415,10 @@
             }
 
             container.innerHTML = '';
+            // Ordenamos manualmente por ID de mayor a menor (los más nuevos primero)
+            data.sort((a, b) => b.id - a.id);
+
             data.forEach(f => {
-                // Verificación de seguridad: si no tiene nombre, lo saltamos
                 if (!f.nombre) return;
 
                 const card = document.createElement('div');
@@ -449,7 +450,11 @@
         }
     }
 
+    
 
+   
+
+    
 
 
     
