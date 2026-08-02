@@ -2,34 +2,34 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Administrador - Mapeador de Coordenadas PDF</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrador - Mapeador de Puntos y Coordenadas PDF</title>
     
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
-    <!-- PDF-lib para generación/conversión de PDF -->
+    <!-- PDF-lib -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <!-- PDF.js para renderizar páginas del PDF -->
+    <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <!-- Mammoth.js para docx -->
+    <!-- Mammoth.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-    <!-- SheetJS para xlsx -->
+    <!-- SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #121212; color: #ffffff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        /* HEADER DE ADMINISTRADOR */
+        /* HEADER */
         .admin-header { background: #1a252f; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #34495e; z-index: 100; }
         .admin-header h1 { font-size: 18px; color: #f1c40f; display: flex; align-items: center; gap: 10px; }
 
-        /* CONTENEDOR PRINCIPAL */
+        /* LAYOUT PRINCIPAL */
         .main-wrapper { display: flex; flex: 1; height: calc(100vh - 55px); overflow: hidden; }
 
-        /* PANEL LATERAL DE CONTROL */
-        .sidebar { width: 320px; background: #1e1e1e; border-right: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
-        .sidebar h2 { font-size: 15px; color: #3498db; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        /* SIDEBAR DE CONTROL */
+        .sidebar { width: 340px; background: #1e1e1e; border-right: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .sidebar h2 { font-size: 14px; color: #3498db; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }
         
         .form-group { display: flex; flex-direction: column; gap: 6px; }
         .form-group label { font-size: 12px; color: #aaa; }
@@ -40,57 +40,56 @@
         .btn-success { background: #2ecc71; color: #000; }
         .btn-success:hover { background: #27ae60; color: #fff; }
 
-        /* VISTA PREVIA Y CANVAS */
+        /* VISUALIZADOR DE DOCUMENTO */
         .viewport { flex: 1; background: #000; overflow: auto; position: relative; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-
-        .pdf-page-wrapper { position: relative; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.8); margin-bottom: 25px; transform-origin: top center; }
+        .pdf-page-wrapper { position: relative; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.8); margin-bottom: 25px; }
         .pdf-canvas { display: block; width: 100%; height: auto; }
-        
-        .overlay-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        .overlay-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto; }
 
-        /* ELEMENTOS CON COORDENADAS */
-        .mapped-field {
+        /* PUNTOS DE CONTROL EN EL CANVAS */
+        .point-marker {
             position: absolute;
-            z-index: 20;
-            border: 2px dashed #e74c3c;
-            background: rgba(231, 76, 60, 0.2);
+            width: 24px;
+            height: 24px;
+            background: #e74c3c;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
             color: #fff;
-            font-weight: bold;
             font-size: 11px;
-            padding: 2px 4px;
-            cursor: move;
-            pointer-events: auto !important;
-            user-select: none;
-            box-sizing: border-box;
+            font-weight: bold;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
+            transform: translate(-50%, -50%);
+            cursor: move;
+            z-index: 30;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+            user-select: none;
         }
-        .mapped-field.selected { border-color: #f1c40f; background: rgba(241, 196, 15, 0.3); }
+        .point-marker.selected { background: #f1c40f; color: #000; border-color: #000; scale: 1.2; }
 
-        .btn-del-field { background: #e74c3c; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-left: 4px; }
-        
-        /* TABLA PREVIA DE CAMPOS */
-        .fields-list { display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; }
-        .field-item { background: #2a2a2a; border: 1px solid #444; border-radius: 6px; padding: 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; }
-        .field-info { display: flex; flex-direction: column; gap: 2px; }
-        .field-coords { font-family: monospace; color: #f1c40f; font-size: 10px; }
+        /* LISTA DE PUNTOS EN SIDEBAR */
+        .points-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+        .point-item { background: #2a2a2a; border: 1px solid #444; border-radius: 6px; padding: 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; }
+        .point-info { display: flex; flex-direction: column; gap: 2px; }
+        .point-coords { font-family: monospace; color: #f1c40f; font-size: 10px; }
+        .btn-del { background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px; }
     </style>
 </head>
 <body>
 
     <div class="admin-header">
-        <h1>🛠️ Administrador: Mapeador de Coordenadas de Plantillas</h1>
-        <button class="btn btn-success" onclick="guardarEnSupabase()">📤 Guardar Plantilla en Supabase</button>
+        <h1>📍 Administrador: Mapeador de Puntos y Coordenadas</h1>
+        <button class="btn btn-success" onclick="guardarEnSupabase()">📤 Guardar en Base de Datos</button>
     </div>
 
     <div class="main-wrapper">
         <!-- BARRA LATERAL -->
         <div class="sidebar">
-            <h2>1. Datos de la Plantilla</h2>
+            <h2>1. Plantilla</h2>
             <div class="form-group">
-                <label>Nombre de la Plantilla</label>
-                <input type="text" id="nombre-plantilla" class="form-control" placeholder="Ej: Formulario FUA 062">
+                <label>Nombre de Configuración</label>
+                <input type="text" id="nombre-plantilla" class="form-control" placeholder="Ej: Formato FUA Puntos">
             </div>
 
             <h2>2. Archivo Base</h2>
@@ -99,32 +98,24 @@
                 <input type="file" id="file-input" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
             </div>
 
-            <h2>3. Agregar Campo</h2>
+            <h2>3. Nuevo Punto</h2>
             <div class="form-group">
-                <label>Identificador del Campo (Key)</label>
-                <input type="text" id="field-key" class="form-control" placeholder="Ej: nombre_paciente">
+                <label>Nombre / Etiqueta del Punto</label>
+                <input type="text" id="point-label" class="form-control" placeholder="Ej: Punto_Firma_1">
             </div>
-            <div class="form-group">
-                <label>Tipo de Campo</label>
-                <select id="field-type" class="form-control">
-                    <option value="texto">Texto</option>
-                    <option value="firma">Firma / Marca</option>
-                    <option value="fecha">Fecha</option>
-                </select>
-            </div>
-            <button class="btn" onclick="agregarCampoMarcador()">➕ Agregar Campo a la Hoja</button>
+            <button class="btn" onclick="agregarPuntoManual()">📍 Agregar Punto al Documento</button>
 
-            <h2>4. Campos Mapeados</h2>
-            <div id="fields-list" class="fields-list">
-                <span style="color: #777; font-size: 12px;">No hay campos mapeados.</span>
+            <h2>4. Registro de Puntos Mapeados</h2>
+            <div id="points-list" class="points-list">
+                <span style="color: #777; font-size: 12px;">No hay puntos marcados. Haz clic en el documento o agrega uno arriba.</span>
             </div>
         </div>
 
-        <!-- ÁREA DE EDICIÓN / CANVAS -->
+        <!-- ÁREA DEL DOCUMENTO -->
         <div class="viewport" id="viewport">
             <div id="placeholder" style="color: #666; margin-top: 100px; text-align: center;">
                 <div style="font-size: 50px;">📄</div>
-                <p>Suba un archivo para comenzar a configurar la plantilla.</p>
+                <p>Cargue un archivo para renderizar las páginas y ubicar los puntos.</p>
             </div>
             <div id="canvas-container"></div>
         </div>
@@ -139,14 +130,14 @@
 
     let pdfDocumentoBytes = null;
     let totalPaginas = 0;
-    let camposMapeados = []; // Guarda las coordenadas relativas (0 a 1)
+    let puntosMapeados = []; // Almacena el listado de puntos en coordenadas relativas (0 a 1)
 
-    // 1. GESTIÓN DE SUBIDA Y CONVERSIÓN A PDF
+    // 1. LECTURA Y CONVERSIÓN DEL ARCHIVO A PDF
     document.getElementById('file-input').addEventListener('change', async function(e) {
         const file = e.target.files[0];
         if (!file) return;
 
-        document.getElementById('placeholder').innerText = "⏳ Procesando y convirtiendo archivo a PDF...";
+        document.getElementById('placeholder').innerText = "⏳ Convirtiendo y renderizando archivo...";
 
         try {
             if (file.type === 'application/pdf') {
@@ -159,17 +150,16 @@
                 page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
                 pdfDocumentoBytes = await pdfDoc.save();
             } else {
-                // Si es Word o Excel, extraer texto y armar un PDF estándar A4
-                let textoExtraido = "";
+                let texto = "";
                 if (file.name.endsWith('.docx')) {
                     const arrayBuffer = await file.arrayBuffer();
                     const result = await mammoth.extractRawText({ arrayBuffer });
-                    textoExtraido = result.value;
+                    texto = result.value;
                 } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
                     const arrayBuffer = await file.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                     workbook.SheetNames.forEach(sheet => {
-                        textoExtraido += XLSX.utils.sheet_to_txt(workbook.Sheets[sheet]) + "\n";
+                        texto += XLSX.utils.sheet_to_txt(workbook.Sheets[sheet]) + "\n";
                     });
                 }
                 
@@ -178,7 +168,7 @@
                 let page = pdfDoc.addPage(PDFLib.PageSizes.A4);
                 let y = page.getHeight() - 40;
 
-                const lines = textoExtraido.split('\n');
+                const lines = texto.split('\n');
                 for (let line of lines) {
                     if (y < 40) {
                         page = pdfDoc.addPage(PDFLib.PageSizes.A4);
@@ -192,14 +182,14 @@
                 pdfDocumentoBytes = await pdfDoc.save();
             }
 
-            renderizarPDFEnPantalla(pdfDocumentoBytes);
+            renderizarDocumento(pdfDocumentoBytes);
         } catch (err) {
-            alert("Error procesando el archivo: " + err.message);
+            alert("Error al procesar el archivo: " + err.message);
         }
     });
 
-    // 2. RENDERIZAR PAGINAS PDF EN PANTALLA
-    async function renderizarPDFEnPantalla(arrayBuffer) {
+    // 2. RENDERIZAR PÁGINAS PDF Y CAPTURAR CLICS
+    async function renderizarDocumento(arrayBuffer) {
         const container = document.getElementById('canvas-container');
         container.innerHTML = '';
         document.getElementById('placeholder').style.display = 'none';
@@ -224,6 +214,19 @@
 
             const overlay = document.createElement('div');
             overlay.className = 'overlay-layer';
+            overlay.dataset.pageNum = num;
+
+            // Permite crear un punto haciendo clic directamente sobre la hoja
+            overlay.addEventListener('click', (e) => {
+                if (e.target !== overlay) return;
+                const rect = overlay.getBoundingClientRect();
+                const relX = (e.clientX - rect.left) / rect.width;
+                const relY = (e.clientY - rect.top) / rect.height;
+                const tag = prompt("Nombre o código para este punto:", `Punto_${puntosMapeados.length + 1}`);
+                if (tag) {
+                    crearPuntoObj(tag, num, relX, relY, overlay);
+                }
+            });
 
             wrapper.appendChild(canvas);
             wrapper.appendChild(overlay);
@@ -233,141 +236,127 @@
         }
     }
 
-    // 3. AGREGAR CAMPO Y REGISTRAR COORDENADAS
-    function agregarCampoMarcador() {
-        const key = document.getElementById('field-key').value.trim();
-        const tipo = document.getElementById('field-type').value;
+    // 3. REGISTRAR OBJETO DE PUNTO
+    function agregarPuntoManual() {
+        const tag = document.getElementById('point-label').value.trim();
+        if (!tag) { alert("Ingresa un nombre para el punto."); return; }
+        if (!totalPaginas) { alert("Carga un archivo primero."); return; }
 
-        if (!key) { alert("Ingresa un identificador para el campo."); return; }
-        if (!totalPaginas) { alert("Primero sube un documento."); return; }
+        const overlay = document.querySelector('.overlay-layer[data-page-num="1"]');
+        crearPuntoObj(tag, 1, 0.5, 0.5, overlay);
+        document.getElementById('point-label').value = '';
+    }
 
-        const primeraHojaOverlay = document.querySelector('.overlay-layer');
-        const pageNum = 1;
-
-        // Coordenadas relativas iniciales (Centrado por defecto)
-        const nuevoCampo = {
-            id: 'f_' + Date.now(),
-            key: key,
-            tipo: tipo,
-            page_num: pageNum,
-            rel_x: 0.1,  // 10% del ancho de la hoja
-            rel_y: 0.1,  // 10% de la altura de la hoja
-            rel_w: 0.25, // 25% de ancho
-            rel_h: 0.04  // 4% de alto
+    function crearPuntoObj(etiqueta, numPagina, relX, relY, overlayEl) {
+        const nuevoPunto = {
+            id: 'p_' + Date.now(),
+            label: etiqueta,
+            page_num: numPagina,
+            rel_x: relX,
+            rel_y: relY
         };
 
-        camposMapeados.push(nuevoCampo);
-        crearElementoGraficoField(primeraHojaOverlay, nuevoCampo);
-        actualizarListaCamposSidebar();
-        document.getElementById('field-key').value = '';
+        puntosMapeados.push(nuevoPunto);
+        dibujarMarcadorDOM(overlayEl, nuevoPunto);
+        actualizarListaPuntosSidebar();
     }
 
-    // 4. CREAR ELEMENTO DRAGGABLE EN VISTA
-    function crearElementoGraficoField(parentOverlay, fieldData) {
-        const el = document.createElement('div');
-        el.className = 'mapped-field';
-        el.id = fieldData.id;
-        
-        // Convertir proporciones a pixeles del contenedor actual
-        const parentW = parentOverlay.offsetWidth;
-        const parentH = parentOverlay.offsetHeight;
+    // 4. CREAR MARCADOR INTERACTIVO (ARRASTRE DE PUNTOS)
+    function dibujarMarcadorDOM(overlayEl, puntoObj) {
+        const marker = document.createElement('div');
+        marker.className = 'point-marker';
+        marker.id = puntoObj.id;
+        marker.innerText = puntoObj.label.substring(0, 3).toUpperCase();
+        marker.title = puntoObj.label;
 
-        el.style.left = `${fieldData.rel_x * 100}%`;
-        el.style.top = `${fieldData.rel_y * 100}%`;
-        el.style.width = `${fieldData.rel_w * 100}%`;
-        el.style.height = `${fieldData.rel_h * 100}%`;
+        marker.style.left = `${puntoObj.rel_x * 100}%`;
+        marker.style.top = `${puntoObj.rel_y * 100}%`;
 
-        el.innerHTML = `<span>${fieldData.key}</span><button class="btn-del-field" onclick="eliminarCampo('${fieldData.id}')">×</button>`;
-
-        parentOverlay.appendChild(el);
-        hacerArrastrable(el, fieldData);
+        overlayEl.appendChild(marker);
+        hacerPuntoArrastrable(marker, puntoObj);
     }
 
-    // 5. CÁLCULO DE COORDENADAS AL ARRASTRAR
-    function hacerArrastrable(el, fieldData) {
+    function hacerPuntoArrastrable(marker, puntoObj) {
         let isDragging = false;
-        let startX, startY, initialLeft, initialTop;
 
-        el.addEventListener('mousedown', (e) => {
-            if (e.target.classList.contains('btn-del-field')) return;
+        marker.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
             isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            initialLeft = el.offsetLeft;
-            initialTop = el.offsetTop;
-            
-            document.querySelectorAll('.mapped-field').forEach(m => m.classList.remove('selected'));
-            el.classList.add('selected');
+            document.querySelectorAll('.point-marker').forEach(m => m.classList.remove('selected'));
+            marker.classList.add('selected');
         });
 
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            const parent = el.parentElement;
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
+            const parent = marker.parentElement;
+            const rect = parent.getBoundingClientRect();
 
-            let newLeft = initialLeft + dx;
-            let newTop = initialTop + dy;
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
 
-            // Calcular % relativo respecto al contenedor
-            fieldData.rel_x = newLeft / parent.offsetWidth;
-            fieldData.rel_y = newTop / parent.offsetHeight;
+            // Restringir a los límites de la página
+            x = Math.max(0, Math.min(x, rect.width));
+            y = Math.max(0, Math.min(y, rect.height));
 
-            el.style.left = `${fieldData.rel_x * 100}%`;
-            el.style.top = `${fieldData.rel_y * 100}%`;
+            puntoObj.rel_x = x / rect.width;
+            puntoObj.rel_y = y / rect.height;
 
-            actualizarListaCamposSidebar();
+            marker.style.left = `${puntoObj.rel_x * 100}%`;
+            marker.style.top = `${puntoObj.rel_y * 100}%`;
+
+            actualizarListaPuntosSidebar();
         });
 
         window.addEventListener('mouseup', () => { isDragging = false; });
     }
 
-    function eliminarCampo(id) {
-        camposMapeados = camposMapeados.filter(c => c.id !== id);
+    function eliminarPunto(id) {
+        puntosMapeados = puntosMapeados.filter(p => p.id !== id);
         const domEl = document.getElementById(id);
         if (domEl) domEl.remove();
-        actualizarListaCamposSidebar();
+        actualizarListaPuntosSidebar();
     }
 
-    function actualizarListaCamposSidebar() {
-        const list = document.getElementById('fields-list');
-        if (camposMapeados.length === 0) {
-            list.innerHTML = '<span style="color: #777; font-size: 12px;">No hay campos mapeados.</span>';
+    function actualizarListaPuntosSidebar() {
+        const list = document.getElementById('points-list');
+        if (puntosMapeados.length === 0) {
+            list.innerHTML = '<span style="color: #777; font-size: 12px;">No hay puntos marcados. Haz clic en el documento o agrega uno arriba.</span>';
             return;
         }
 
         list.innerHTML = '';
-        camposMapeados.forEach(c => {
+        puntosMapeados.forEach(p => {
             const item = document.createElement('div');
-            item.className = 'field-item';
+            item.className = 'field-item point-item';
             item.innerHTML = `
-                <div class="field-info">
-                    <strong>${c.key} (${c.tipo})</strong>
-                    <span class="field-coords">Pág ${c.page_num} | X: ${(c.rel_x*100).toFixed(1)}% Y: ${(c.rel_y*100).toFixed(1)}%</span>
+                <div class="point-info">
+                    <strong>📍 ${p.label}</strong>
+                    <span class="point-coords">Pág ${p.page_num} | X: ${(p.rel_x*100).toFixed(1)}% | Y: ${(p.rel_y*100).toFixed(1)}%</span>
                 </div>
+                <button class="btn-del" onclick="eliminarPunto('${p.id}')">Borrar</button>
             `;
             list.appendChild(item);
         });
     }
 
-    // 6. GUARDAR EN LA BASE DE DATOS SUPABASE
+    // 5. GUARDAR EN SUPABASE (SOLO TOMA COORDENADAS)
     async function guardarEnSupabase() {
         const nombrePlantilla = document.getElementById('nombre-plantilla').value.trim();
         if (!nombrePlantilla) { alert("⚠️ Asigna un nombre a la plantilla."); return; }
-        if (camposMapeados.length === 0) { alert("⚠️ Agrega al menos un campo mapeado."); return; }
+        if (puntosMapeados.length === 0) { alert("⚠️ Debes ubicar al menos un punto en el documento."); return; }
         if (!pdfDocumentoBytes) { alert("⚠️ Sube un archivo base."); return; }
 
         try {
-            // A) Subir el archivo PDF base a Supabase Storage
-            const nombreArchivoStorage = `plantillas/template_${Date.now()}.pdf`;
+            // A) Subir PDF a Supabase Storage
+            const pathStorage = `plantillas/puntos_${Date.now()}.pdf`;
             const { data: storageData, error: storageError } = await supabase
                 .storage
                 .from('documentos')
-                .upload(nombreArchivoStorage, pdfDocumentoBytes, { contentType: 'application/pdf' });
+                .upload(pathStorage, pdfDocumentoBytes, { contentType: 'application/pdf' });
 
             if (storageError) throw storageError;
 
-            // B) Insertar la cabecera de la plantilla
+            // B) Crear registro en la tabla cabecera
             const { data: plantillaData, error: plantillaError } = await supabase
                 .from('plantillas')
                 .insert([{
@@ -380,29 +369,26 @@
 
             if (plantillaError) throw plantillaError;
 
-            // C) Insertar la lista de coordenadas asociadas
-            const camposAInsertar = camposMapeados.map(c => ({
+            // C) Insertar únicamente la tabla de puntos / coordenadas
+            const filasPuntos = puntosMapeados.map(p => ({
                 plantilla_id: plantillaData.id,
-                campo_key: c.key,
-                tipo_campo: c.tipo,
-                numero_pagina: c.page_num,
-                pos_x_porcentaje: c.rel_x,
-                pos_y_porcentaje: c.rel_y,
-                ancho_porcentaje: c.rel_w,
-                alto_porcentaje: c.rel_h
+                etiqueta_punto: p.label,
+                numero_pagina: p.page_num,
+                pos_x_porcentaje: p.rel_x,
+                pos_y_porcentaje: p.rel_y
             }));
 
-            const { error: camposError } = await supabase
-                .from('plantillas_campos')
-                .insert(camposAInsertar);
+            const { error: puntosError } = await supabase
+                .from('plantillas_puntos')
+                .insert(filasPuntos);
 
-            if (camposError) throw camposError;
+            if (puntosError) throw puntosError;
 
-            alert("✅ ¡Plantilla y coordenadas guardadas con éxito en Supabase!");
+            alert("✅ ¡Documento procesado y lista de puntos guardada correctamente!");
             location.reload();
 
         } catch (err) {
-            alert("❌ Error guardando plantilla: " + err.message);
+            alert("❌ Error guardando puntos: " + err.message);
         }
     }
 </script>
