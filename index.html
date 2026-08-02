@@ -3,394 +3,568 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administrador - Mapeador de Puntos y Coordenadas PDF</title>
+    <title>Admin - Generador de Documentos</title>
     
-    <!-- Supabase JS -->
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
-    <!-- PDF-lib -->
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <!-- PDF.js -->
+    <!-- PDF.js para renderizar el PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <!-- Mammoth.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-    <!-- SheetJS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #121212; color: #ffffff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-
-        /* HEADER */
-        .admin-header { background: #1a252f; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #34495e; z-index: 100; }
-        .admin-header h1 { font-size: 18px; color: #f1c40f; display: flex; align-items: center; gap: 10px; }
-
-        /* LAYOUT PRINCIPAL */
-        .main-wrapper { display: flex; flex: 1; height: calc(100vh - 55px); overflow: hidden; }
-
-        /* SIDEBAR DE CONTROL */
-        .sidebar { width: 340px; background: #1e1e1e; border-right: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
-        .sidebar h2 { font-size: 14px; color: #3498db; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        body { background-color: #121212; color: #ffffff; padding: 20px; display: flex; flex-direction: column; height: 100vh; }
         
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        .form-group label { font-size: 12px; color: #aaa; }
-        .form-control { background: #000; color: #fff; border: 1px solid #444; padding: 8px 10px; border-radius: 6px; outline: none; font-size: 13px; }
+        .header { background: #1e1e1e; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #9b59b6; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .header h1 { color: #9b59b6; font-size: 22px; }
+
+        /* Pestañas */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; overflow-x: auto; }
+        .tab-btn { background: transparent; color: #888; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; transition: 0.3s; white-space: nowrap; }
+        .tab-btn:hover { color: #fff; background: #222; }
+        .tab-btn.active { color: #fff; background: #9b59b6; }
         
-        .btn { background: #3498db; color: white; border: none; padding: 10px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; justify-content: center; align-items: center; gap: 8px; }
-        .btn:hover { background: #2980b9; }
-        .btn-success { background: #2ecc71; color: #000; }
-        .btn-success:hover { background: #27ae60; color: #fff; }
+        .tab-content { display: none; flex: 1; overflow: hidden; }
+        .tab-content.active { display: flex; }
 
-        /* VISUALIZADOR DE DOCUMENTO */
-        .viewport { flex: 1; background: #000; overflow: auto; position: relative; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .pdf-page-wrapper { position: relative; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.8); margin-bottom: 25px; }
-        .pdf-canvas { display: block; width: 100%; height: auto; }
-        .overlay-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto; }
+        /* Estilos Generales */
+        .panel { background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+        .input-group label { color: #ccc; font-weight: bold; font-size: 13px; }
+        .input-group input, .input-group select, .input-group textarea { padding: 10px; background: #000; color: #fff; border: 1px solid #444; border-radius: 5px; outline: none; }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: #9b59b6; }
+        
+        .btn-primary { background: #9b59b6; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-primary:hover { background: #8e44ad; }
+        .btn-success { background: #2ecc71; color: #000; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-danger { background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        
+        /* Nuevos Botones */
+        .btn-blue { background: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-orange { background: #e67e22; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
-        /* PUNTOS DE CONTROL EN EL CANVAS */
-        .point-marker {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            background: #e74c3c;
-            border: 2px solid #ffffff;
-            border-radius: 50%;
-            color: #fff;
-            font-size: 11px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transform: translate(-50%, -50%);
-            cursor: move;
-            z-index: 30;
-            box-shadow: 0 0 8px rgba(0,0,0,0.5);
-            user-select: none;
+        /* Tabla de Códigos */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #222; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #444; }
+        th { background: #333; color: #f1c40f; }
+        tr:hover { background: #2a2a2a; }
+        .acciones-cell { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+
+        /* Magia CSS para que la tabla se vea bien en celulares */
+        @media (max-width: 768px ) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            tr { border-bottom: 2px solid #444; padding: 15px 0; margin-bottom: 10px; background: #2a2a2a; border-radius: 8px; }
+            td { border: none; position: relative; padding-left: 45%; text-align: right !important; padding-top: 10px; padding-bottom: 10px; }
+            td:before { position: absolute; left: 15px; width: 40%; padding-right: 10px; white-space: nowrap; content: attr(data-label); text-align: left; font-weight: bold; color: #aaa; }
+            .acciones-cell { flex-direction: column; align-items: flex-end; }
+            .acciones-cell button { width: 100%; margin-top: 5px; }
+            
+            /* Ajustes para el creador visual en móvil */
+            #tab-plantillas { flex-direction: column; overflow-y: auto; }
+            .panel-izquierdo { width: 100%; margin-bottom: 20px; }
+            .panel-derecho { margin-left: 0; }
         }
-        .point-marker.selected { background: #f1c40f; color: #000; border-color: #000; scale: 1.2; }
 
-        /* LISTA DE PUNTOS EN SIDEBAR */
-        .points-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
-        .point-item { background: #2a2a2a; border: 1px solid #444; border-radius: 6px; padding: 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; }
-        .point-info { display: flex; flex-direction: column; gap: 2px; }
-        .point-coords { font-family: monospace; color: #f1c40f; font-size: 10px; }
-        .btn-del { background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px; }
+        /* Creador Visual (Panel Izquierdo y Derecho ) */
+        .panel-izquierdo { width: 350px; background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .panel-derecho { flex: 1; background: #222; border-radius: 8px; border: 1px solid #444; display: flex; justify-content: center; align-items: flex-start; overflow: auto; padding: 20px; position: relative; margin-left: 20px; }
+        
+        .campos-lista { list-style: none; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .campo-item { background: #2c3e50; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-left: 3px solid #3498db; }
+        
+        .canvas-container { position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        #pdf-canvas { display: block; }
+        #draw-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; z-index: 10; }
     </style>
 </head>
 <body>
 
-    <div class="admin-header">
-        <h1>📍 Administrador: Mapeador de Puntos y Coordenadas</h1>
-        <button class="btn btn-success" onclick="guardarEnSupabase()">📤 Guardar en Base de Datos</button>
+    <div class="header">
+        <h1>🛠️ Admin: Generador de Documentos</h1>
+        <span style="color: #2ecc71; font-weight: bold;" id="status-db">Conectando a BD...</span>
     </div>
 
-    <div class="main-wrapper">
-        <!-- BARRA LATERAL -->
-        <div class="sidebar">
-            <h2>1. Plantilla</h2>
-            <div class="form-group">
-                <label>Nombre de Configuración</label>
-                <input type="text" id="nombre-plantilla" class="form-control" placeholder="Ej: Formato FUA Puntos">
-            </div>
+    <!-- Navegación de Pestañas -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab('tab-codigos', this)">🎟️ Gestión de Códigos</button>
+        <button class="tab-btn" onclick="openTab('tab-plantillas', this)">📄 Creador de Plantillas</button>
+    </div>
 
-            <h2>2. Archivo Base</h2>
-            <div class="form-group">
-                <label>Subir (PDF, Word, Excel, Imagen)</label>
-                <input type="file" id="file-input" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+    <!-- PESTAÑA 1: GESTIÓN DE CÓDIGOS -->
+    <div id="tab-codigos" class="tab-content active" style="flex-direction: column;">
+        <div class="panel" style="display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap;">
+            <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label>Nuevo Código (Para el cliente)</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="nuevo-codigo" placeholder="Ej: JUAN-123" style="flex: 1;">
+                    <button class="btn-primary" onclick="generarCodigoRandom()" style="margin-top: 0;">🎲 Aleatorio</button>
+                </div>
             </div>
-
-            <h2>3. Nuevo Punto</h2>
-            <div class="form-group">
-                <label>Nombre / Etiqueta del Punto</label>
-                <input type="text" id="point-label" class="form-control" placeholder="Ej: Punto_Firma_1">
+            <div class="input-group" style="width: 150px;">
+                <label>Créditos (Hojas)</label>
+                <input type="number" id="nuevo-creditos" value="5" min="1">
             </div>
-            <button class="btn" onclick="agregarPuntoManual()">📍 Agregar Punto al Documento</button>
-
-            <h2>4. Registro de Puntos Mapeados</h2>
-            <div id="points-list" class="points-list">
-                <span style="color: #777; font-size: 12px;">No hay puntos marcados. Haz clic en el documento o agrega uno arriba.</span>
-            </div>
+            <button class="btn-success" onclick="crearCodigo()" style="height: 42px; margin-bottom: 15px;">➕ Crear Código</button>
         </div>
 
-        <!-- ÁREA DEL DOCUMENTO -->
-        <div class="viewport" id="viewport">
-            <div id="placeholder" style="color: #666; margin-top: 100px; text-align: center;">
-                <div style="font-size: 50px;">📄</div>
-                <p>Cargue un archivo para renderizar las páginas y ubicar los puntos.</p>
-            </div>
-            <div id="canvas-container"></div>
+        <div class="panel" style="flex: 1; margin-top: 20px;">
+            <h3 style="color: #f1c40f;">Códigos Activos</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th style="text-align: center;">Créditos Disponibles</th>
+                        <th>Fecha de Creación</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-codigos">
+                    <tr><td colspan="4" style="text-align: center; color: #888;">Cargando códigos...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
+    <!-- PESTAÑA 2: CREADOR DE PLANTILLAS VISUAL -->
+    <div id="tab-plantillas" class="tab-content">
+
+
+
+
+
+                <!-- PANEL IZQUIERDO -->
+        <div class="panel-izquierdo">
+            <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px;">1. Datos de la Plantilla</h3>
+            
+            <div class="input-group">
+                <label>Nombre del Documento</label>
+                <input type="text" id="tpl-nombre" placeholder="Ej: Contrato de Alquiler">
+            </div>
+            <div class="input-group">
+                <label>Tipo de Documento</label>
+                <select id="tpl-tipo" onchange="cambiarModoPlantilla()">
+                    <option value="ia">Generado por IA (Texto nuevo)</option>
+                    <option value="rellenado" selected>Rellenado (PDF fijo)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Descripción (Para el cliente)</label>
+                <textarea id="tpl-desc" rows="2" placeholder="Ej: Ideal para alquiler de cuartos..."></textarea>
+            </div>
+
+            <!-- SECCIÓN A: MODO RELLENADO (PDF) -->
+            <div id="seccion-pdf-admin">
+                <div class="input-group">
+                    <label>Subir PDF Base (Fondo)</label>
+                    <input type="file" id="pdf-upload" accept="application/pdf">
+                </div>
+                <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 10px;">2. Campos Marcados</h3>
+                <p style="font-size: 12px; color: #aaa;">Dibuja rectángulos en el PDF de la derecha para crear campos.</p>
+                <ul class="campos-lista" id="lista-campos">
+                    <li style="color: #666; font-size: 13px; text-align: center;">No hay campos aún</li>
+                </ul>
+            </div>
+
+            <!-- SECCIÓN B: MODO IA (PREGUNTAS DINÁMICAS) -->
+            <div id="seccion-ia-admin" style="display: none;">
+                <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 10px;">2. Preguntas para la IA</h3>
+                <p style="font-size: 12px; color: #aaa;">¿Qué datos le pedirás al cliente para redactar esto?</p>
+                
+                <div class="input-group" style="margin-top: 10px;">
+                    <input type="text" id="nueva-pregunta-ia" placeholder="Ej: Nombre del Arrendador">
+                    <button class="btn-blue" onclick="agregarPreguntaIA()" style="margin-top: 5px;">➕ Añadir Pregunta</button>
+                </div>
+                
+                <ul class="campos-lista" id="lista-preguntas-ia">
+                    <li style="color: #666; font-size: 13px; text-align: center;">No hay preguntas aún</li>
+                </ul>
+            </div>
+
+            <button class="btn-primary" onclick="guardarPlantilla()" style="margin-top: 15px;">💾 Guardar Plantilla en BD</button>
+        </div>
+
+
+        
+        <!-- PANEL DERECHO (LIENZO) -->
+        <div class="panel-derecho" id="panel-lienzo">
+            <div class="canvas-container" id="canvas-wrapper" style="display: none;">
+                <canvas id="pdf-canvas"></canvas>
+                <canvas id="draw-canvas"></canvas>
+            </div>
+            <div id="mensaje-vacio" style="color: #666; margin-top: 100px;">
+                Sube un PDF a la izquierda para empezar a marcar coordenadas.
+            </div>
+        </div>
+    </div>
 <script>
-    // CONFIGURACIÓN DE SUPABASE
+    // 1. CONFIGURACIÓN DE SUPABASE
     const supabaseUrl = 'https://wpzddhmllctdsiuxenss.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwemRkaG1sbGN0ZHNpdXhlbnNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjUyNzQsImV4cCI6MjA5OTU0MTI3NH0.hwSxJ3Sk_RlgbvFyr8S64XRuxW7j55BU4gaIneFTuhY';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey  );
+
+    // Configurar el Worker de PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    let pdfDocumentoBytes = null;
-    let totalPaginas = 0;
-    let puntosMapeados = []; // Almacena el listado de puntos en coordenadas relativas (0 a 1)
-
-    // 1. LECTURA Y CONVERSIÓN DEL ARCHIVO A PDF
-    document.getElementById('file-input').addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        document.getElementById('placeholder').innerText = "⏳ Convirtiendo y renderizando archivo...";
-
-        try {
-            if (file.type === 'application/pdf') {
-                pdfDocumentoBytes = await file.arrayBuffer();
-            } else if (file.type.startsWith('image/')) {
-                const pdfDoc = await PDFLib.PDFDocument.create();
-                const imageBytes = await file.arrayBuffer();
-                const img = file.type.includes('png') ? await pdfDoc.embedPng(imageBytes) : await pdfDoc.embedJpg(imageBytes);
-                const page = pdfDoc.addPage([img.width, img.height]);
-                page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
-                pdfDocumentoBytes = await pdfDoc.save();
-            } else {
-                let texto = "";
-                if (file.name.endsWith('.docx')) {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const result = await mammoth.extractRawText({ arrayBuffer });
-                    texto = result.value;
-                } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                    workbook.SheetNames.forEach(sheet => {
-                        texto += XLSX.utils.sheet_to_txt(workbook.Sheets[sheet]) + "\n";
-                    });
-                }
-                
-                const pdfDoc = await PDFLib.PDFDocument.create();
-                const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-                let page = pdfDoc.addPage(PDFLib.PageSizes.A4);
-                let y = page.getHeight() - 40;
-
-                const lines = texto.split('\n');
-                for (let line of lines) {
-                    if (y < 40) {
-                        page = pdfDoc.addPage(PDFLib.PageSizes.A4);
-                        y = page.getHeight() - 40;
-                    }
-                    if (line.trim()) {
-                        page.drawText(line.substring(0, 80), { x: 40, y, size: 10, font });
-                    }
-                    y -= 14;
-                }
-                pdfDocumentoBytes = await pdfDoc.save();
-            }
-
-            renderizarDocumento(pdfDocumentoBytes);
-        } catch (err) {
-            alert("Error al procesar el archivo: " + err.message);
-        }
-    });
-
-    // 2. RENDERIZAR PÁGINAS PDF Y CAPTURAR CLICS
-    async function renderizarDocumento(arrayBuffer) {
-        const container = document.getElementById('canvas-container');
-        container.innerHTML = '';
-        document.getElementById('placeholder').style.display = 'none';
-
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        totalPaginas = pdf.numPages;
-
-        for (let num = 1; num <= totalPaginas; num++) {
-            const page = await pdf.getPage(num);
-            const viewport = page.getViewport({ scale: 1.2 });
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'pdf-page-wrapper';
-            wrapper.dataset.pageNum = num;
-            wrapper.style.width = `${viewport.width}px`;
-            wrapper.style.height = `${viewport.height}px`;
-
-            const canvas = document.createElement('canvas');
-            canvas.className = 'pdf-canvas';
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-
-            const overlay = document.createElement('div');
-            overlay.className = 'overlay-layer';
-            overlay.dataset.pageNum = num;
-
-            // Permite crear un punto haciendo clic directamente sobre la hoja
-            overlay.addEventListener('click', (e) => {
-                if (e.target !== overlay) return;
-                const rect = overlay.getBoundingClientRect();
-                const relX = (e.clientX - rect.left) / rect.width;
-                const relY = (e.clientY - rect.top) / rect.height;
-                const tag = prompt("Nombre o código para este punto:", `Punto_${puntosMapeados.length + 1}`);
-                if (tag) {
-                    crearPuntoObj(tag, num, relX, relY, overlay);
-                }
-            });
-
-            wrapper.appendChild(canvas);
-            wrapper.appendChild(overlay);
-            container.appendChild(wrapper);
-
-            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    // Verificar conexión y cargar datos iniciales
+    async function init(  ) {
+        const { data, error } = await supabase.from('usuarios_codigos').select('id').limit(1);
+        const statusEl = document.getElementById('status-db');
+        if (error) {
+            statusEl.innerText = '❌ Error de BD';
+            statusEl.style.color = '#e74c3c';
+            console.error(error);
+        } else {
+            statusEl.innerText = '✅ BD Conectada';
+            cargarCodigos(); // Cargar la tabla de códigos
         }
     }
+    init();
 
-    // 3. REGISTRAR OBJETO DE PUNTO
-    function agregarPuntoManual() {
-        const tag = document.getElementById('point-label').value.trim();
-        if (!tag) { alert("Ingresa un nombre para el punto."); return; }
-        if (!totalPaginas) { alert("Carga un archivo primero."); return; }
-
-        const overlay = document.querySelector('.overlay-layer[data-page-num="1"]');
-        crearPuntoObj(tag, 1, 0.5, 0.5, overlay);
-        document.getElementById('point-label').value = '';
+    // --- LÓGICA DE PESTAÑAS ---
+    function openTab(tabId, btnElement) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btnElement.classList.add('active');
     }
 
-    function crearPuntoObj(etiqueta, numPagina, relX, relY, overlayEl) {
-        const nuevoPunto = {
-            id: 'p_' + Date.now(),
-            label: etiqueta,
-            page_num: numPagina,
-            rel_x: relX,
-            rel_y: relY
-        };
-
-        puntosMapeados.push(nuevoPunto);
-        dibujarMarcadorDOM(overlayEl, nuevoPunto);
-        actualizarListaPuntosSidebar();
+    // --- LÓGICA DE GESTIÓN DE CÓDIGOS ---
+    function generarCodigoRandom() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = 'DOC-';
+        for (let i = 0; i < 6; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+        document.getElementById('nuevo-codigo').value = result;
     }
 
-    // 4. CREAR MARCADOR INTERACTIVO (ARRASTRE DE PUNTOS)
-    function dibujarMarcadorDOM(overlayEl, puntoObj) {
-        const marker = document.createElement('div');
-        marker.className = 'point-marker';
-        marker.id = puntoObj.id;
-        marker.innerText = puntoObj.label.substring(0, 3).toUpperCase();
-        marker.title = puntoObj.label;
-
-        marker.style.left = `${puntoObj.rel_x * 100}%`;
-        marker.style.top = `${puntoObj.rel_y * 100}%`;
-
-        overlayEl.appendChild(marker);
-        hacerPuntoArrastrable(marker, puntoObj);
-    }
-
-    function hacerPuntoArrastrable(marker, puntoObj) {
-        let isDragging = false;
-
-        marker.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-            isDragging = true;
-            document.querySelectorAll('.point-marker').forEach(m => m.classList.remove('selected'));
-            marker.classList.add('selected');
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const parent = marker.parentElement;
-            const rect = parent.getBoundingClientRect();
-
-            let x = e.clientX - rect.left;
-            let y = e.clientY - rect.top;
-
-            // Restringir a los límites de la página
-            x = Math.max(0, Math.min(x, rect.width));
-            y = Math.max(0, Math.min(y, rect.height));
-
-            puntoObj.rel_x = x / rect.width;
-            puntoObj.rel_y = y / rect.height;
-
-            marker.style.left = `${puntoObj.rel_x * 100}%`;
-            marker.style.top = `${puntoObj.rel_y * 100}%`;
-
-            actualizarListaPuntosSidebar();
-        });
-
-        window.addEventListener('mouseup', () => { isDragging = false; });
-    }
-
-    function eliminarPunto(id) {
-        puntosMapeados = puntosMapeados.filter(p => p.id !== id);
-        const domEl = document.getElementById(id);
-        if (domEl) domEl.remove();
-        actualizarListaPuntosSidebar();
-    }
-
-    function actualizarListaPuntosSidebar() {
-        const list = document.getElementById('points-list');
-        if (puntosMapeados.length === 0) {
-            list.innerHTML = '<span style="color: #777; font-size: 12px;">No hay puntos marcados. Haz clic en el documento o agrega uno arriba.</span>';
+    async function cargarCodigos() {
+        const { data, error } = await supabase.from('usuarios_codigos').select('*').order('fecha_creacion', { ascending: false });
+        const tbody = document.getElementById('tabla-codigos');
+        
+        if (error) {
+            tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Error al cargar códigos</td></tr>`;
             return;
         }
 
-        list.innerHTML = '';
-        puntosMapeados.forEach(p => {
-            const item = document.createElement('div');
-            item.className = 'field-item point-item';
-            item.innerHTML = `
-                <div class="point-info">
-                    <strong>📍 ${p.label}</strong>
-                    <span class="point-coords">Pág ${p.page_num} | X: ${(p.rel_x*100).toFixed(1)}% | Y: ${(p.rel_y*100).toFixed(1)}%</span>
-                </div>
-                <button class="btn-del" onclick="eliminarPunto('${p.id}')">Borrar</button>
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888;">No hay códigos creados aún.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        data.forEach(row => {
+            const fecha = new Date(row.fecha_creacion).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            // Se añadieron los data-label para que se vea bien en celular y los nuevos botones
+            tbody.innerHTML += `
+                <tr>
+                    <td data-label="Código"><strong style="color: #9b59b6; font-size: 16px;">${row.codigo}</strong></td>
+                    <td data-label="Créditos Disponibles" style="text-align: center;"><span style="background: #2ecc71; color: #000; padding: 4px 10px; border-radius: 12px; font-weight: bold;">${row.creditos}</span></td>
+                    <td data-label="Fecha de Creación">${fecha}</td>
+                    <td data-label="Acciones" class="acciones-cell">
+                        <button class="btn-blue" onclick="compartirCodigo('${row.codigo}')">📤 Compartir</button>
+                        <button class="btn-orange" onclick="recargarCodigo(${row.id}, ${row.creditos})">🔋 Recargar</button>
+                        <button class="btn-danger" onclick="eliminarCodigo(${row.id}, '${row.codigo}')">🗑️ Eliminar</button>
+                    </td>
+                </tr>
             `;
-            list.appendChild(item);
         });
     }
 
-    // 5. GUARDAR EN SUPABASE (SOLO TOMA COORDENADAS)
-    async function guardarEnSupabase() {
-        const nombrePlantilla = document.getElementById('nombre-plantilla').value.trim();
-        if (!nombrePlantilla) { alert("⚠️ Asigna un nombre a la plantilla."); return; }
-        if (puntosMapeados.length === 0) { alert("⚠️ Debes ubicar al menos un punto en el documento."); return; }
-        if (!pdfDocumentoBytes) { alert("⚠️ Sube un archivo base."); return; }
+    async function crearCodigo() {
+        const codigo = document.getElementById('nuevo-codigo').value.trim().toUpperCase();
+        const creditos = parseInt(document.getElementById('nuevo-creditos').value);
+
+        if (!codigo) return alert("Por favor, ingresa o genera un código.");
+        if (isNaN(creditos) || creditos <= 0) return alert("Ingresa una cantidad válida de créditos.");
 
         try {
-            // A) Subir PDF a Supabase Storage
-            const pathStorage = `plantillas/puntos_${Date.now()}.pdf`;
-            const { data: storageData, error: storageError } = await supabase
-                .storage
-                .from('documentos')
-                .upload(pathStorage, pdfDocumentoBytes, { contentType: 'application/pdf' });
-
-            if (storageError) throw storageError;
-
-            // B) Crear registro en la tabla cabecera
-            const { data: plantillaData, error: plantillaError } = await supabase
-                .from('plantillas')
-                .insert([{
-                    nombre: nombrePlantilla,
-                    archivo_url: storageData.path,
-                    total_paginas: totalPaginas
-                }])
-                .select()
-                .single();
-
-            if (plantillaError) throw plantillaError;
-
-            // C) Insertar únicamente la tabla de puntos / coordenadas
-            const filasPuntos = puntosMapeados.map(p => ({
-                plantilla_id: plantillaData.id,
-                etiqueta_punto: p.label,
-                numero_pagina: p.page_num,
-                pos_x_porcentaje: p.rel_x,
-                pos_y_porcentaje: p.rel_y
-            }));
-
-            const { error: puntosError } = await supabase
-                .from('plantillas_puntos')
-                .insert(filasPuntos);
-
-            if (puntosError) throw puntosError;
-
-            alert("✅ ¡Documento procesado y lista de puntos guardada correctamente!");
-            location.reload();
-
+            const { error } = await supabase.from('usuarios_codigos').insert([{ codigo: codigo, creditos: creditos }]);
+            if (error) {
+                if (error.code === '23505') throw new Error("Este código ya existe. Intenta con otro.");
+                throw error;
+            }
+            
+            alert(`✅ Código ${codigo} creado con ${creditos} créditos.`);
+            document.getElementById('nuevo-codigo').value = '';
+            cargarCodigos();
         } catch (err) {
-            alert("❌ Error guardando puntos: " + err.message);
+            alert("❌ Error: " + err.message);
         }
     }
+
+    async function eliminarCodigo(id, codigoStr) {
+        if (!confirm(`¿Estás seguro de eliminar el código ${codigoStr}? El cliente perderá el acceso.`)) return;
+        
+        const { error } = await supabase.from('usuarios_codigos').delete().eq('id', id);
+        if (error) alert("Error al eliminar: " + error.message);
+        else cargarCodigos();
+    }
+
+    // --- NUEVAS FUNCIONES: RECARGAR Y COMPARTIR ---
+    async function recargarCodigo(id, creditosActuales) {
+        const cantidadStr = prompt(`¿Cuántos créditos deseas SUMAR a este código?\n(Actualmente tiene ${creditosActuales} créditos)`, "5");
+        
+        if (cantidadStr === null) return; // El usuario canceló
+        
+        const cantidad = parseInt(cantidadStr);
+        if (isNaN(cantidad) || cantidad <= 0) return alert('❌ Cantidad inválida. Debes ingresar un número mayor a 0.');
+        
+        const nuevosCreditos = creditosActuales + cantidad;
+        
+        const { error } = await supabase.from('usuarios_codigos').update({ creditos: nuevosCreditos }).eq('id', id);
+        
+        if (error) return alert('❌ Error al recargar los créditos.');
+        
+        alert(`✅ ¡Recarga exitosa! El código ahora tiene ${nuevosCreditos} créditos.`);
+        cargarCodigos();
+    }
+
+    function compartirCodigo(codigo) {
+        const mensaje = `¡Hola! Aquí tienes tu código para DocuFácil: *${codigo}*\n\nIngresa a la aplicación, coloca tu código y empieza a generar tus documentos al instante. 📄✨`;
+        
+        navigator.clipboard.writeText(mensaje).then(() => {
+            const urlWa = `https://wa.me/?text=${encodeURIComponent(mensaje )}`;
+            if(confirm('✅ Código y mensaje copiados al portapapeles.\n\n¿Deseas abrir WhatsApp para enviarlo ahora mismo?')) {
+                window.open(urlWa, '_blank');
+            }
+        }).catch(err => {
+            alert(`Tu código es: ${codigo}\n\n(Cópialo manualmente)`);
+        });
+    }
+
+    // --- LÓGICA DEL CREADOR VISUAL (PDF) ---
+    let camposDibujados = [];
+    let isDrawing = false;
+    let startX = 0, startY = 0;
+    const drawCanvas = document.getElementById('draw-canvas');
+    const ctx = drawCanvas.getContext('2d');
+
+    document.getElementById('pdf-upload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file.type !== 'application/pdf') return alert('Por favor, sube un archivo PDF.');
+
+        const reader = new FileReader();
+        reader.onload = async function() {
+            const typedarray = new Uint8Array(this.result);
+            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+            const page = await pdf.getPage(1);
+
+            const scale = 1.5;
+            const viewport = page.getViewport({ scale: scale });
+
+            const pdfCanvas = document.getElementById('pdf-canvas');
+            const pdfCtx = pdfCanvas.getContext('2d');
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.width = viewport.width;
+
+            drawCanvas.height = viewport.height;
+            drawCanvas.width = viewport.width;
+
+            const renderContext = { canvasContext: pdfCtx, viewport: viewport };
+            await page.render(renderContext).promise;
+
+            document.getElementById('mensaje-vacio').style.display = 'none';
+            document.getElementById('canvas-wrapper').style.display = 'block';
+            
+            camposDibujados = [];
+            actualizarListaCampos();
+            redibujarCampos();
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    drawCanvas.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        const rect = drawCanvas.getBoundingClientRect();
+        startX = e.clientX - rect.left;
+        startY = e.clientY - rect.top;
+    });
+
+    drawCanvas.addEventListener('mousemove', (e) => {
+        if (!isDrawing) return;
+        const rect = drawCanvas.getBoundingClientRect();
+        const currentX = e.clientX - rect.left;
+        const currentY = e.clientY - rect.top;
+
+        redibujarCampos();
+        
+        ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
+        ctx.fillRect(startX, startY, currentX - startX, currentY - startY);
+        ctx.strokeStyle = '#3498db';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+    });
+
+    drawCanvas.addEventListener('mouseup', (e) => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        
+        const rect = drawCanvas.getBoundingClientRect();
+        const endX = e.clientX - rect.left;
+        const endY = e.clientY - rect.top;
+
+        const width = endX - startX;
+        const height = endY - startY;
+
+        if (Math.abs(width) < 10 || Math.abs(height) < 10) {
+            redibujarCampos();
+            return;
+        }
+
+        const nombreCampo = prompt("¿Qué dato va en este recuadro? (Ej: Nombre, DNI, Fecha)");
+        
+        if (nombreCampo && nombreCampo.trim() !== "") {
+            camposDibujados.push({
+                nombre: nombreCampo.trim(),
+                x: Math.min(startX, endX),
+                y: Math.min(startY, endY),
+                ancho: Math.abs(width),
+                alto: Math.abs(height)
+            });
+            actualizarListaCampos();
+        }
+        redibujarCampos();
+    });
+
+    function redibujarCampos() {
+        ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        camposDibujados.forEach(campo => {
+            ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
+            ctx.fillRect(campo.x, campo.y, campo.ancho, campo.alto);
+            ctx.strokeStyle = '#2ecc71';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(campo.x, campo.y, campo.ancho, campo.alto);
+            
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(campo.nombre, campo.x + 5, campo.y + 15);
+        });
+    }
+
+    function actualizarListaCampos() {
+        const lista = document.getElementById('lista-campos');
+        lista.innerHTML = '';
+        if (camposDibujados.length === 0) {
+            lista.innerHTML = '<li style="color: #666; font-size: 13px; text-align: center;">No hay campos aún</li>';
+            return;
+        }
+
+        camposDibujados.forEach((campo, index) => {
+            lista.innerHTML += `
+                <li class="campo-item">
+                    <span><strong>${campo.nombre}</strong>   
+<span style="font-size:10px; color:#aaa;">(X: ${Math.round(campo.x)}, Y: ${Math.round(campo.y)})</span></span>
+                    <button class="btn-danger" style="padding: 4px 8px;" onclick="borrarCampo(${index})">❌</button>
+                </li>
+            `;
+        });
+    }
+
+    function borrarCampo(index) {
+        camposDibujados.splice(index, 1);
+        actualizarListaCampos();
+        redibujarCampos();
+    }
+
+
+
+
+
+        // --- LÓGICA DE MODOS (IA vs RELLENADO) ---
+    let preguntasIA = [];
+
+    function cambiarModoPlantilla() {
+        const tipo = document.getElementById('tpl-tipo').value;
+        if (tipo === 'ia') {
+            document.getElementById('seccion-pdf-admin').style.display = 'none';
+            document.getElementById('panel-lienzo').style.display = 'none'; // Ocultar el lienzo
+            document.getElementById('seccion-ia-admin').style.display = 'block';
+        } else {
+            document.getElementById('seccion-pdf-admin').style.display = 'block';
+            document.getElementById('panel-lienzo').style.display = 'flex'; // Mostrar el lienzo
+            document.getElementById('seccion-ia-admin').style.display = 'none';
+        }
+    }
+
+    function agregarPreguntaIA() {
+        const input = document.getElementById('nueva-pregunta-ia');
+        const pregunta = input.value.trim();
+        if (!pregunta) return;
+        
+        preguntasIA.push(pregunta);
+        input.value = '';
+        actualizarListaPreguntasIA();
+    }
+
+    function actualizarListaPreguntasIA() {
+        const lista = document.getElementById('lista-preguntas-ia');
+        lista.innerHTML = '';
+        if (preguntasIA.length === 0) {
+            lista.innerHTML = '<li style="color: #666; font-size: 13px; text-align: center;">No hay preguntas aún</li>';
+            return;
+        }
+        preguntasIA.forEach((preg, index) => {
+            lista.innerHTML += `
+                <li class="campo-item">
+                    <span><strong>${preg}</strong></span>
+                    <button class="btn-danger" style="padding: 4px 8px;" onclick="borrarPreguntaIA(${index})">❌</button>
+                </li>
+            `;
+        });
+    }
+
+    function borrarPreguntaIA(index) {
+        preguntasIA.splice(index, 1);
+        actualizarListaPreguntasIA();
+    }
+
+    // --- GUARDAR PLANTILLA (ACTUALIZADO) ---
+    async function guardarPlantilla() {
+        const nombre = document.getElementById('tpl-nombre').value.trim();
+        const tipo = document.getElementById('tpl-tipo').value;
+        const desc = document.getElementById('tpl-desc').value.trim();
+
+        if (!nombre) return alert("Por favor, ponle un nombre a la plantilla.");
+
+        let configuracionJSON = {};
+
+        if (tipo === 'ia') {
+            if (preguntasIA.length === 0) return alert("Debes añadir al menos una pregunta para la IA.");
+            configuracionJSON = { preguntas: preguntasIA };
+        } else {
+            if (camposDibujados.length === 0) return alert("Debes dibujar al menos un campo en el PDF.");
+            configuracionJSON = { elementos: camposDibujados };
+        }
+
+        try {
+            const { data, error } = await supabase.from('plantillas').insert([{
+                nombre: nombre,
+                tipo: tipo,
+                descripcion: desc,
+                configuracion: configuracionJSON
+            }]);
+
+            if (error) throw error;
+
+            alert("✅ ¡Plantilla guardada exitosamente en Supabase!");
+            
+            // Limpiar formulario
+            document.getElementById('tpl-nombre').value = '';
+            document.getElementById('tpl-desc').value = '';
+            camposDibujados = [];
+            preguntasIA = [];
+            actualizarListaCampos();
+            actualizarListaPreguntasIA();
+            if(tipo === 'rellenado') redibujarCampos();
+
+        } catch (err) {
+            alert("❌ Error al guardar: " + err.message);
+        }
+    }
+
+
+
+
+    
 </script>
 </body>
 </html>
