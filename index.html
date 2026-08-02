@@ -7,7 +7,7 @@
     
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
-    <!-- PDF.js para renderizar el PDF -->
+    <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
     <style>
@@ -36,7 +36,7 @@
         .btn-success { background: #2ecc71; color: #000; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-danger { background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
-        /* Tabla de Códigos */
+        /* Tabla de Puntos / Códigos */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #222; border-radius: 8px; overflow: hidden; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #444; }
         th { background: #333; color: #f1c40f; }
@@ -44,7 +44,7 @@
         /* Creador Visual */
         .panel-izquierdo { width: 350px; background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
         .panel-derecho { flex: 1; background: #222; border-radius: 8px; border: 1px solid #444; display: flex; justify-content: center; align-items: flex-start; overflow: auto; padding: 20px; position: relative; margin-left: 20px; }
-        .canvas-container { position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5 ); }
+        .canvas-container { position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
         #draw-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; z-index: 10; }
 
         /* Lista de Formatos */
@@ -60,88 +60,89 @@
     </div>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="openTab('tab-codigos', this)">🎟️ Gestión de Códigos</button>
-        <button class="tab-btn" onclick="openTab('tab-lista', this)">📋 Mis Formatos</button>
-        <button class="tab-btn" onclick="openTab('tab-creador', this)">➕ Arquitecto de Formatos</button>
+        <button class="tab-btn active" onclick="openTab('tab-codigos', this)">🎟️ Puntos y Códigos</button>
+        <button class="tab-btn" onclick="openTab('tab-lista', this)">📋 Mis Plantillas Guardadas</button>
+        <button class="tab-btn" onclick="openTab('tab-creador', this)">➕ Diseñador de Plantillas</button>
     </div>
 
-    <!-- PESTAÑA 1: GESTIÓN DE CÓDIGOS (RESTAURADA) -->
+    <!-- PESTAÑA 1: GESTIÓN DE PUNTOS Y CÓDIGOS -->
     <div id="tab-codigos" class="tab-content active" style="flex-direction: column;">
         <div class="panel" style="display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap;">
             <div class="input-group" style="flex: 1; min-width: 200px;">
-                <label>Nuevo Código</label>
+                <label>Nuevo Código de Puntos</label>
                 <div style="display: flex; gap: 10px;">
-                    <input type="text" id="nuevo-codigo" placeholder="Ej: JUAN-123" style="flex: 1;">
+                    <input type="text" id="nuevo-codigo" placeholder="Ej: CARTA-2026" style="flex: 1;">
                     <button class="btn-primary" onclick="generarCodigoRandom()">🎲 Aleatorio</button>
                 </div>
             </div>
             <div class="input-group" style="width: 150px;">
-                <label>Créditos</label>
-                <input type="number" id="nuevo-creditos" value="5" min="1">
+                <label>Puntos / Créditos</label>
+                <input type="number" id="nuevo-creditos" value="10" min="1">
             </div>
-            <button class="btn-success" onclick="crearCodigo()" style="height: 42px; margin-bottom: 15px;">➕ Crear Código</button>
+            <button class="btn-success" onclick="crearCodigo()" style="height: 42px; margin-bottom: 15px;">➕ Registrar Puntos</button>
         </div>
         <div class="panel" style="flex: 1; margin-top: 20px;">
             <table>
                 <thead>
-                    <tr><th>Código</th><th>Créditos</th><th>Fecha</th><th>Acciones</th></tr>
+                    <tr><th>Código</th><th>Puntos / Créditos</th><th>Fecha</th><th>Acciones</th></tr>
                 </thead>
                 <tbody id="tabla-codigos"></tbody>
             </table>
         </div>
     </div>
 
-    <!-- PESTAÑA 2: MIS FORMATOS (NUEVA) -->
+    <!-- PESTAÑA 2: MIS PLANTILLAS -->
     <div id="tab-lista" class="tab-content" style="flex-direction: column;">
         <div class="panel">
             <div class="formatos-grid" id="formatos-container"></div>
         </div>
     </div>
 
-    <!-- PESTAÑA 3: ARQUITECTO DE FORMATOS (MEJORADA) -->
+    <!-- PESTAÑA 3: DISEÑADOR DE PLANTILLAS -->
     <div id="tab-creador" class="tab-content">
         <div class="panel-izquierdo">
             <div class="input-group">
-                <label>Nombre del Formato</label>
-                <input type="text" id="fmt-nombre" placeholder="Ej: Solicitud de Vacaciones">
+                <label>Nombre de la Plantilla</label>
+                <input type="text" id="fmt-nombre" placeholder="Ej: Carta Notarial Estándar">
             </div>
             <div class="input-group">
                 <label>Categoría</label>
                 <select id="fmt-categoria">
-                    <option value="carta">Carta</option>
+                    <option value="carta_notarial">Carta Notarial</option>
+                    <option value="carta">Carta Formal</option>
                     <option value="solicitud">Solicitud</option>
                     <option value="contrato">Contrato</option>
-                    <option value="curriculum">Curriculum</option>
+                    <option value="curriculum">Currículum</option>
                 </select>
             </div>
             <div class="input-group">
-                <label>Subir Modelo (PDF, JPG, PNG)</label>
+                <label>Subir Documento Base (PDF, JPG, PNG)</label>
                 <input type="file" id="file-upload" accept="application/pdf,image/*">
             </div>
             <div id="config-areas" style="display: none;">
-                <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 5px;">Áreas Marcadas</h3>
+                <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 5px;">Coordenadas de Campos</h3>
                 <ul id="lista-areas" style="list-style:none; margin-top:10px;"></ul>
             </div>
-            <button class="btn-success" onclick="guardarFormato()" style="margin-top: 20px;">💾 Guardar Formato</button>
+            <button class="btn-success" onclick="guardarFormato()" style="margin-top: 20px;">💾 Guardar Coordenadas</button>
         </div>
         <div class="panel-derecho">
             <div class="canvas-container" id="canvas-wrapper" style="display: none;">
                 <canvas id="main-canvas"></canvas>
                 <canvas id="draw-canvas"></canvas>
             </div>
-            <div id="msg-vacio" style="color: #666; margin-top: 100px;">Sube un archivo para empezar.</div>
+            <div id="msg-vacio" style="color: #666; margin-top: 100px;">Sube un modelo en PDF o Imagen para delimitar posiciones.</div>
         </div>
     </div>
 
-    <!-- MODAL DE ÁREAS -->
+    <!-- MODAL DE SELECCIÓN DE ÁREA -->
     <div id="modal-area" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center;">
-        <div style="background: #222; padding: 20px; border-radius: 10px; width: 300px;">
-            <h3 style="margin-bottom: 15px; text-align: center;">¿Qué área es esta?</h3>
+        <div style="background: #222; padding: 20px; border-radius: 10px; width: 320px;">
+            <h3 style="margin-bottom: 15px; text-align: center; color: #f1c40f;">Definir Campo</h3>
             <select id="select-tipo-area" style="width: 100%; padding: 10px; background: #000; color: #fff; border: 1px solid #444; border-radius: 5px; margin-bottom: 15px;">
-                <option value="fecha">📅 Fecha</option>
-                <option value="remitente">👤 Datos Remitente</option>
-                <option value="destinatario">🏢 Datos Destinatario</option>
-                <option value="cuerpo">📝 Cuerpo del Texto (IA)</option>
+                <option value="titulo">📌 Título Centrado</option>
+                <option value="fecha">📅 Fecha (Derecha)</option>
+                <option value="destinatario">🏢 Remitente / Destinatario</option>
+                <option value="cuerpo">📝 Cuerpo del Texto (Justificado)</option>
                 <option value="firma">✍️ Área de Firma</option>
             </select>
             <div style="display: flex; gap: 10px;">
@@ -150,28 +151,21 @@
             </div>
         </div>
     </div>
+
 <script>
-    // ==========================================
-    // 1. CONFIGURACIÓN DE SUPABASE
-    // ==========================================
     const supabaseUrl = 'https://wpzddhmllctdsiuxenss.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwemRkaG1sbGN0ZHNpdXhlbnNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjUyNzQsImV4cCI6MjA5OTU0MTI3NH0.hwSxJ3Sk_RlgbvFyr8S64XRuxW7j55BU4gaIneFTuhY';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    // Configurar el Worker de PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    // ==========================================
-    // 2. INICIO Y PESTAÑAS
-    // ==========================================
-    async function init( ) {
+    async function init() {
         const { data, error } = await supabase.from('usuarios_codigos').select('id').limit(1);
         const statusEl = document.getElementById('status-db');
         if (error) {
-            statusEl.innerText = '❌ Error de BD';
-            statusEl.style.color = '#e74c3c';
+            statusEl.innerText = '❌ Error BD'; statusEl.style.color = '#e74c3c';
         } else {
-            statusEl.innerText = '✅ BD Conectada';
+            statusEl.innerText = '✅ Conectado';
             cargarCodigos();
             cargarFormatos();
         }
@@ -185,9 +179,6 @@
         btnElement.classList.add('active');
     }
 
-    // ==========================================
-    // 3. GESTIÓN DE CÓDIGOS (RESTAURADA)
-    // ==========================================
     function generarCodigoRandom() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let result = 'DOC-';
@@ -198,19 +189,18 @@
     async function cargarCodigos() {
         const { data, error } = await supabase.from('usuarios_codigos').select('*').order('fecha_creacion', { ascending: false });
         const tbody = document.getElementById('tabla-codigos');
-        if (error) return tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Error</td></tr>`;
+        if (error) return tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Error al cargar</td></tr>`;
         
         tbody.innerHTML = '';
         data.forEach(row => {
-            const fecha = new Date(row.fecha_creacion).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const fecha = new Date(row.fecha_creacion).toLocaleDateString('es-PE');
             tbody.innerHTML += `
                 <tr>
                     <td><strong style="color: #9b59b6;">${row.codigo}</strong></td>
-                    <td><span style="background: #2ecc71; color: #000; padding: 4px 10px; border-radius: 12px; font-weight: bold;">${row.creditos}</span></td>
+                    <td><span style="background: #2ecc71; color: #000; padding: 4px 10px; border-radius: 12px; font-weight: bold;">${row.creditos} pts</span></td>
                     <td>${fecha}</td>
                     <td>
                         <button class="btn-success" style="padding: 5px 10px;" onclick="recargarCodigo(${row.id}, ${row.creditos}, '${row.codigo}')">🔋</button>
-                        <button class="btn-primary" style="padding: 5px 10px; background: #3498db;" onclick="compartirCodigo('${row.codigo}')">📤</button>
                         <button class="btn-danger" style="padding: 5px 10px;" onclick="eliminarCodigo(${row.id}, '${row.codigo}')">🗑️</button>
                     </td>
                 </tr>
@@ -221,23 +211,17 @@
     async function crearCodigo() {
         const codigo = document.getElementById('nuevo-codigo').value.trim().toUpperCase();
         const creditos = parseInt(document.getElementById('nuevo-creditos').value);
-        if (!codigo || isNaN(creditos)) return alert("Datos incompletos");
+        if (!codigo || isNaN(creditos)) return alert("Completa los campos de código y puntos");
         const { error } = await supabase.from('usuarios_codigos').insert([{ codigo, creditos }]);
         if (error) alert("Error: " + error.message);
         else { cargarCodigos(); document.getElementById('nuevo-codigo').value = ''; }
     }
 
     async function recargarCodigo(id, actual, codigo) {
-        const extra = prompt(`¿Cuántos créditos quieres sumar al código ${codigo}?`, "5");
+        const extra = prompt(`Puntos a añadir al código ${codigo}:`, "10");
         if (!extra || isNaN(extra)) return;
-        const nuevoTotal = actual + parseInt(extra);
-        const { error } = await supabase.from('usuarios_codigos').update({ creditos: nuevoTotal }).eq('id', id);
+        const { error } = await supabase.from('usuarios_codigos').update({ creditos: actual + parseInt(extra) }).eq('id', id);
         if (error) alert("Error"); else cargarCodigos();
-    }
-
-    function compartirCodigo(codigo) {
-        const msg = `Hola! Aquí tienes tu código para DocuFácil: *${codigo}*. Úsalo para generar tus documentos.`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg )}`, '_blank');
     }
 
     async function eliminarCodigo(id, codigo) {
@@ -246,10 +230,7 @@
         cargarCodigos();
     }
 
-
-    // ==========================================
-    // 4. ARQUITECTO DE FORMATOS (MOTOR VISUAL)
-    // ==========================================
+    // ARQUITECTO / DISEÑADOR DE PLANTILLAS
     let currentFileBase64 = null;
     let currentFileType = null;
     let areasMarcadas = [];
@@ -283,7 +264,6 @@
     });
 
     async function renderPDF(dataUrl) {
-        // Corregido: Referencia directa a pdfjsLib
         const loadingTask = pdfjsLib.getDocument({ data: atob(dataUrl.split(',')[1]) });
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
@@ -308,11 +288,9 @@
     function setupCanvases(w, h) {
         mainCanvas.width = drawCanvas.width = w;
         mainCanvas.height = drawCanvas.height = h;
-        // No limpiamos áreasMarcadas aquí para permitir la edición
         redibujarAreas();
     }
 
-    // --- DIBUJO DE RECTÁNGULOS ---
     drawCanvas.onmousedown = (e) => {
         isDrawing = true;
         const rect = drawCanvas.getBoundingClientRect();
@@ -340,7 +318,18 @@
 
     function confirmarArea() {
         const sel = document.getElementById('select-tipo-area');
-        areasMarcadas.push({ ...tempRect, tipo: sel.value, nombre: sel.options[sel.selectedIndex].text });
+        // Convertir coordenadas relativas en porcentajes para asegurar independencia de resolución
+        const pctX = tempRect.x / drawCanvas.width;
+        const pctY = tempRect.y / drawCanvas.height;
+        const pctW = tempRect.w / drawCanvas.width;
+        const pctH = tempRect.h / drawCanvas.height;
+
+        areasMarcadas.push({
+            ...tempRect,
+            pctX, pctY, pctW, pctH,
+            tipo: sel.value,
+            nombre: sel.options[sel.selectedIndex].text
+        });
         cancelarArea();
         actualizarListaAreas();
     }
@@ -370,126 +359,53 @@
         lista.innerHTML = areasMarcadas.map((a, i) => `
             <li style="background:#2c3e50; padding:8px; border-radius:4px; margin-bottom:5px; display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:12px;">${a.nombre}</span>
-                <button onclick="areasMarcadas.splice(${i},1); redibujarAreas(); actualizarListaAreas();" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-weight:bold;">✖</button>
+                <button onclick="areasMarcadas.splice(${i},1); redibujarAreas(); actualizarListaAreas();" style="background:none; border:none; color:#e74c3c; cursor:pointer;">✖</button>
             </li>
         `).join('');
     }
 
-    // ==========================================
-    // 5. GUARDAR Y CARGAR FORMATOS
-    // ==========================================
     async function guardarFormato() {
         const nombre = document.getElementById('fmt-nombre').value.trim();
         const categoria = document.getElementById('fmt-categoria').value;
-        if (!nombre || !currentFileBase64 || areasMarcadas.length === 0) return alert("Faltan datos (Nombre, Archivo o Áreas)");
+        if (!nombre || !currentFileBase64 || areasMarcadas.length === 0) return alert("Completa el nombre, selecciona un archivo y define áreas");
 
         const { error } = await supabase.from('plantillas').insert([{
-            nombre, 
-            tipo: 'inteligente', 
+            nombre,
+            tipo: 'inteligente',
             descripcion: categoria,
             configuracion: { fondo: currentFileBase64, tipoFondo: currentFileType, areas: areasMarcadas }
         }]);
 
-        if (error) alert("Error al guardar: " + error.message);
-        else { alert("✅ Formato guardado correctamente"); location.reload(); }
+        if (error) alert("Error al guardar plantilla: " + error.message);
+        else { alert("✅ Plantilla guardada con éxito"); cargarFormatos(); openTab('tab-lista', document.querySelectorAll('.tab-btn')[1]); }
     }
-
-
-
-    
 
     async function cargarFormatos() {
-        try {
-            // Corregido: Quitamos el .order('created_at') que causaba el error
-            const { data, error } = await supabase
-                .from('plantillas')
-                .select('*');
+        const { data, error } = await supabase.from('plantillas').select('*');
+        const container = document.getElementById('formatos-container');
+        if (error || !data || data.length === 0) return container.innerHTML = '<p style="color:#888;">No hay plantillas registradas.</p>';
 
-            if (error) throw error;
-
-            const container = document.getElementById('formatos-container');
-            
-            if (!data || data.length === 0) {
-                container.innerHTML = '<p style="color:#888; text-align:center; width:100%;">No hay formatos creados aún.</p>';
-                return;
-            }
-
-            container.innerHTML = '';
-            // Ordenamos manualmente por ID de mayor a menor (los más nuevos primero)
-            data.sort((a, b) => b.id - a.id);
-
-            data.forEach(f => {
-                if (!f.nombre) return;
-
-                const card = document.createElement('div');
-                card.className = 'formato-card';
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:start;">
-                        <h3 style="font-size:16px; color:#f1c40f;">${f.nombre}</h3>
-                        <span style="font-size:9px; background:#444; color:#aaa; padding:2px 5px; border-radius:4px;">ID: ${f.id}</span>
-                    </div>
-                    <p style="font-size:12px; color:#aaa; margin: 8px 0;">
-                        Categoría: <span style="color:#fff;">${f.descripcion || 'General'}</span>
-                    </p>
-                    <div style="margin-top:12px; display:flex; gap:8px;">
-                        <button class="btn-primary" style="flex:1; padding:8px; font-size:12px; background:#3498db;" onclick="editarFormato(${f.id})">✏️ Editar</button>
-                        <button class="btn-danger" style="flex:1; padding:8px; font-size:12px;" onclick="borrarFormato(${f.id})">🗑️ Borrar</button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-
-        } catch (err) {
-            console.error("Error detallado:", err);
-            document.getElementById('formatos-container').innerHTML = `
-                <div style="color:#e74c3c; text-align:center; width:100%;">
-                    <p>❌ Error al conectar con la tabla 'plantillas'</p>
-                    <p style="font-size:11px; color:#888; margin-top:5px;">Detalle: ${err.message}</p>
+        container.innerHTML = '';
+        data.sort((a, b) => b.id - a.id);
+        data.forEach(f => {
+            const card = document.createElement('div');
+            card.className = 'formato-card';
+            card.innerHTML = `
+                <h3 style="color:#f1c40f;">${f.nombre}</h3>
+                <p style="font-size:12px; color:#aaa; margin:5px 0;">Categoría: ${f.descripcion}</p>
+                <div style="margin-top:10px; display:flex; gap:5px;">
+                    <button class="btn-danger" style="flex:1;" onclick="borrarFormato(${f.id})">🗑️ Eliminar</button>
                 </div>
             `;
-        }
-    }
-
-    
-
-   
-
-    
-
-
-    
-    async function editarFormato(id) {
-        const { data, error } = await supabase.from('plantillas').select('*').eq('id', id).single();
-        if (error || !data) return alert("No se pudo cargar el formato.");
-
-        // Cambiar a la pestaña de creador
-        openTab('tab-creador', document.querySelectorAll('.tab-btn')[2]);
-        
-        // Llenar datos básicos
-        document.getElementById('fmt-nombre').value = data.nombre;
-        document.getElementById('fmt-categoria').value = data.descripcion || 'carta';
-        
-        // Cargar configuración
-        if (data.configuracion) {
-            currentFileBase64 = data.configuracion.fondo;
-            currentFileType = data.configuracion.tipoFondo;
-            areasMarcadas = data.configuracion.areas || [];
-            
-            document.getElementById('msg-vacio').style.display = 'none';
-            document.getElementById('canvas-wrapper').style.display = 'block';
-            document.getElementById('config-areas').style.display = 'block';
-            
-            if (currentFileType === 'pdf') renderPDF(currentFileBase64);
-            else renderImage(currentFileBase64);
-            
-            actualizarListaAreas();
-        }
+            container.appendChild(card);
+        });
     }
 
     async function borrarFormato(id) {
-        if (confirm("¿Estás seguro de borrar este formato?")) {
-            const { error } = await supabase.from('plantillas').delete().eq('id', id);
-            if (error) alert("Error"); else cargarFormatos();
-        }
+        if (!confirm("¿Eliminar esta plantilla?")) return;
+        await supabase.from('plantillas').delete().eq('id', id);
+        cargarFormatos();
     }
 </script>
+</body>
+</html>
