@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Generador de Documentos</title>
     
-    <!-- Supabase -->
+    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
-    <!-- PDF.js para renderizar el PDF -->
+    <!-- PDF-lib para generación/conversión de PDF -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <!-- PDF.js para renderizar páginas del PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- Mammoth.js para documentos Word (.docx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <!-- SheetJS para hojas Excel (.xlsx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -38,7 +44,6 @@
         .btn-success { background: #2ecc71; color: #000; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-danger { background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         
-        /* Nuevos Botones */
         .btn-blue { background: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-orange { background: #e67e22; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
@@ -49,8 +54,8 @@
         tr:hover { background: #2a2a2a; }
         .acciones-cell { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
 
-        /* Magia CSS para que la tabla se vea bien en celulares */
-        @media (max-width: 768px ) {
+        /* Adaptación a dispositivos móviles */
+        @media (max-width: 768px) {
             table, thead, tbody, th, td, tr { display: block; }
             thead tr { position: absolute; top: -9999px; left: -9999px; }
             tr { border-bottom: 2px solid #444; padding: 15px 0; margin-bottom: 10px; background: #2a2a2a; border-radius: 8px; }
@@ -59,20 +64,19 @@
             .acciones-cell { flex-direction: column; align-items: flex-end; }
             .acciones-cell button { width: 100%; margin-top: 5px; }
             
-            /* Ajustes para el creador visual en móvil */
             #tab-plantillas { flex-direction: column; overflow-y: auto; }
             .panel-izquierdo { width: 100%; margin-bottom: 20px; }
             .panel-derecho { margin-left: 0; }
         }
 
-        /* Creador Visual (Panel Izquierdo y Derecho ) */
+        /* Creador Visual */
         .panel-izquierdo { width: 350px; background: #1e1e1e; padding: 20px; border-radius: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
         .panel-derecho { flex: 1; background: #222; border-radius: 8px; border: 1px solid #444; display: flex; justify-content: center; align-items: flex-start; overflow: auto; padding: 20px; position: relative; margin-left: 20px; }
         
         .campos-lista { list-style: none; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
         .campo-item { background: #2c3e50; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-left: 3px solid #3498db; }
         
-        .canvas-container { position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        .canvas-container { position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.5); display: inline-block; }
         #pdf-canvas { display: block; }
         #draw-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; z-index: 10; }
     </style>
@@ -128,11 +132,7 @@
     <!-- PESTAÑA 2: CREADOR DE PLANTILLAS VISUAL -->
     <div id="tab-plantillas" class="tab-content">
 
-
-
-
-
-                <!-- PANEL IZQUIERDO -->
+        <!-- PANEL IZQUIERDO -->
         <div class="panel-izquierdo">
             <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px;">1. Datos de la Plantilla</h3>
             
@@ -144,7 +144,7 @@
                 <label>Tipo de Documento</label>
                 <select id="tpl-tipo" onchange="cambiarModoPlantilla()">
                     <option value="ia">Generado por IA (Texto nuevo)</option>
-                    <option value="rellenado" selected>Rellenado (PDF fijo)</option>
+                    <option value="rellenado" selected>Rellenado (PDF / Formato Fijo)</option>
                 </select>
             </div>
             <div class="input-group">
@@ -152,14 +152,14 @@
                 <textarea id="tpl-desc" rows="2" placeholder="Ej: Ideal para alquiler de cuartos..."></textarea>
             </div>
 
-            <!-- SECCIÓN A: MODO RELLENADO (PDF) -->
+            <!-- SECCIÓN A: MODO RELLENADO (PDF, Word, Excel, Imágenes) -->
             <div id="seccion-pdf-admin">
                 <div class="input-group">
-                    <label>Subir PDF Base (Fondo)</label>
-                    <input type="file" id="pdf-upload" accept="application/pdf">
+                    <label>Subir Archivo Base (PDF, Word, Excel, Imagen)</label>
+                    <input type="file" id="pdf-upload" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
                 </div>
                 <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 10px;">2. Campos Marcados</h3>
-                <p style="font-size: 12px; color: #aaa;">Dibuja rectángulos en el PDF de la derecha para crear campos.</p>
+                <p style="font-size: 12px; color: #aaa;">Dibuja rectángulos sobre la hoja de la derecha para definir las coordenadas de los campos.</p>
                 <ul class="campos-lista" id="lista-campos">
                     <li style="color: #666; font-size: 13px; text-align: center;">No hay campos aún</li>
                 </ul>
@@ -183,30 +183,30 @@
             <button class="btn-primary" onclick="guardarPlantilla()" style="margin-top: 15px;">💾 Guardar Plantilla en BD</button>
         </div>
 
-
-        
-        <!-- PANEL DERECHO (LIENZO) -->
+        <!-- PANEL DERECHO (LIENZO DE DIBUJO) -->
         <div class="panel-derecho" id="panel-lienzo">
             <div class="canvas-container" id="canvas-wrapper" style="display: none;">
                 <canvas id="pdf-canvas"></canvas>
                 <canvas id="draw-canvas"></canvas>
             </div>
-            <div id="mensaje-vacio" style="color: #666; margin-top: 100px;">
-                Sube un PDF a la izquierda para empezar a marcar coordenadas.
+            <div id="mensaje-vacio" style="color: #666; margin-top: 100px; text-align: center;">
+                Sube un archivo a la izquierda para renderizarlo y empezar a marcar coordenadas.
             </div>
         </div>
     </div>
+
 <script>
     // 1. CONFIGURACIÓN DE SUPABASE
     const supabaseUrl = 'https://wpzddhmllctdsiuxenss.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwemRkaG1sbGN0ZHNpdXhlbnNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjUyNzQsImV4cCI6MjA5OTU0MTI3NH0.hwSxJ3Sk_RlgbvFyr8S64XRuxW7j55BU4gaIneFTuhY';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey  );
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    // Configurar el Worker de PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    // Verificar conexión y cargar datos iniciales
-    async function init(  ) {
+    let pdfBytesProcesado = null; // Almacena el buffer del PDF generado/subido
+
+    // Verificar conexión y cargar datos
+    async function init() {
         const { data, error } = await supabase.from('usuarios_codigos').select('id').limit(1);
         const statusEl = document.getElementById('status-db');
         if (error) {
@@ -215,7 +215,7 @@
             console.error(error);
         } else {
             statusEl.innerText = '✅ BD Conectada';
-            cargarCodigos(); // Cargar la tabla de códigos
+            cargarCodigos();
         }
     }
     init();
@@ -228,7 +228,7 @@
         btnElement.classList.add('active');
     }
 
-    // --- LÓGICA DE GESTIÓN DE CÓDIGOS ---
+    // --- GESTIÓN DE CÓDIGOS ---
     function generarCodigoRandom() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let result = 'DOC-';
@@ -253,7 +253,6 @@
         tbody.innerHTML = '';
         data.forEach(row => {
             const fecha = new Date(row.fecha_creacion).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-            // Se añadieron los data-label para que se vea bien en celular y los nuevos botones
             tbody.innerHTML += `
                 <tr>
                     <td data-label="Código"><strong style="color: #9b59b6; font-size: 16px;">${row.codigo}</strong></td>
@@ -299,17 +298,14 @@
         else cargarCodigos();
     }
 
-    // --- NUEVAS FUNCIONES: RECARGAR Y COMPARTIR ---
     async function recargarCodigo(id, creditosActuales) {
         const cantidadStr = prompt(`¿Cuántos créditos deseas SUMAR a este código?\n(Actualmente tiene ${creditosActuales} créditos)`, "5");
-        
-        if (cantidadStr === null) return; // El usuario canceló
+        if (cantidadStr === null) return;
         
         const cantidad = parseInt(cantidadStr);
         if (isNaN(cantidad) || cantidad <= 0) return alert('❌ Cantidad inválida. Debes ingresar un número mayor a 0.');
         
         const nuevosCreditos = creditosActuales + cantidad;
-        
         const { error } = await supabase.from('usuarios_codigos').update({ creditos: nuevosCreditos }).eq('id', id);
         
         if (error) return alert('❌ Error al recargar los créditos.');
@@ -322,56 +318,105 @@
         const mensaje = `¡Hola! Aquí tienes tu código para DocuFácil: *${codigo}*\n\nIngresa a la aplicación, coloca tu código y empieza a generar tus documentos al instante. 📄✨`;
         
         navigator.clipboard.writeText(mensaje).then(() => {
-            const urlWa = `https://wa.me/?text=${encodeURIComponent(mensaje )}`;
+            const urlWa = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
             if(confirm('✅ Código y mensaje copiados al portapapeles.\n\n¿Deseas abrir WhatsApp para enviarlo ahora mismo?')) {
                 window.open(urlWa, '_blank');
             }
-        }).catch(err => {
+        }).catch(() => {
             alert(`Tu código es: ${codigo}\n\n(Cópialo manualmente)`);
         });
     }
 
-    // --- LÓGICA DEL CREADOR VISUAL (PDF) ---
+    // --- PROCESAMIENTO DE ARCHIVOS Y RENDERIZADO (PDF, WORD, EXCEL, IMAGEN) ---
     let camposDibujados = [];
     let isDrawing = false;
     let startX = 0, startY = 0;
     const drawCanvas = document.getElementById('draw-canvas');
     const ctx = drawCanvas.getContext('2d');
 
-    document.getElementById('pdf-upload').addEventListener('change', function(e) {
+    document.getElementById('pdf-upload').addEventListener('change', async function(e) {
         const file = e.target.files[0];
-        if (file.type !== 'application/pdf') return alert('Por favor, sube un archivo PDF.');
+        if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = async function() {
-            const typedarray = new Uint8Array(this.result);
-            const pdf = await pdfjsLib.getDocument(typedarray).promise;
-            const page = await pdf.getPage(1);
+        document.getElementById('mensaje-vacio').innerText = "⏳ Procesando y convirtiendo archivo a PDF...";
 
-            const scale = 1.5;
-            const viewport = page.getViewport({ scale: scale });
+        try {
+            if (file.type === 'application/pdf') {
+                pdfBytesProcesado = await file.arrayBuffer();
+            } else if (file.type.startsWith('image/')) {
+                const pdfDoc = await PDFLib.PDFDocument.create();
+                const imageBytes = await file.arrayBuffer();
+                const img = file.type.includes('png') ? await pdfDoc.embedPng(imageBytes) : await pdfDoc.embedJpg(imageBytes);
+                const page = pdfDoc.addPage([img.width, img.height]);
+                page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+                pdfBytesProcesado = await pdfDoc.save();
+            } else {
+                let textoExtraido = "";
+                if (file.name.endsWith('.docx')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer });
+                    textoExtraido = result.value;
+                } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    workbook.SheetNames.forEach(sheet => {
+                        textoExtraido += XLSX.utils.sheet_to_txt(workbook.Sheets[sheet]) + "\n";
+                    });
+                }
+                
+                const pdfDoc = await PDFLib.PDFDocument.create();
+                const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+                let page = pdfDoc.addPage(PDFLib.PageSizes.A4);
+                let y = page.getHeight() - 40;
 
-            const pdfCanvas = document.getElementById('pdf-canvas');
-            const pdfCtx = pdfCanvas.getContext('2d');
-            pdfCanvas.height = viewport.height;
-            pdfCanvas.width = viewport.width;
+                const lines = textoExtraido.split('\n');
+                for (let line of lines) {
+                    if (y < 40) {
+                        page = pdfDoc.addPage(PDFLib.PageSizes.A4);
+                        y = page.getHeight() - 40;
+                    }
+                    if (line.trim()) {
+                        page.drawText(line.substring(0, 80), { x: 40, y, size: 10, font });
+                    }
+                    y -= 14;
+                }
+                pdfBytesProcesado = await pdfDoc.save();
+            }
 
-            drawCanvas.height = viewport.height;
-            drawCanvas.width = viewport.width;
-
-            const renderContext = { canvasContext: pdfCtx, viewport: viewport };
-            await page.render(renderContext).promise;
-
-            document.getElementById('mensaje-vacio').style.display = 'none';
-            document.getElementById('canvas-wrapper').style.display = 'block';
-            
-            camposDibujados = [];
-            actualizarListaCampos();
-            redibujarCampos();
-        };
-        reader.readAsArrayBuffer(file);
+            renderizarPDFEnLienzo(pdfBytesProcesado);
+        } catch (err) {
+            alert("Error procesando el archivo: " + err.message);
+            document.getElementById('mensaje-vacio').innerText = "Ocurrió un error al cargar el archivo.";
+        }
     });
 
+    async function renderizarPDFEnLienzo(arrayBuffer) {
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1); // Renderizar la primera página
+
+        const scale = 1.3;
+        const viewport = page.getViewport({ scale: scale });
+
+        const pdfCanvas = document.getElementById('pdf-canvas');
+        const pdfCtx = pdfCanvas.getContext('2d');
+        pdfCanvas.height = viewport.height;
+        pdfCanvas.width = viewport.width;
+
+        drawCanvas.height = viewport.height;
+        drawCanvas.width = viewport.width;
+
+        const renderContext = { canvasContext: pdfCtx, viewport: viewport };
+        await page.render(renderContext).promise;
+
+        document.getElementById('mensaje-vacio').style.display = 'none';
+        document.getElementById('canvas-wrapper').style.display = 'block';
+        
+        camposDibujados = [];
+        actualizarListaCampos();
+        redibujarCampos();
+    }
+
+    // --- CAPTURA DE COORDENADAS MEDIANTE RECTÁNGULOS ---
     drawCanvas.addEventListener('mousedown', (e) => {
         isDrawing = true;
         const rect = drawCanvas.getBoundingClientRect();
@@ -413,12 +458,23 @@
         const nombreCampo = prompt("¿Qué dato va en este recuadro? (Ej: Nombre, DNI, Fecha)");
         
         if (nombreCampo && nombreCampo.trim() !== "") {
+            const absX = Math.min(startX, endX);
+            const absY = Math.min(startY, endY);
+            const absW = Math.abs(width);
+            const absH = Math.abs(height);
+
+            // Guardar tanto coordenadas de pantalla como las PROPORCIONES RELATIVAS (0 a 1)
             camposDibujados.push({
                 nombre: nombreCampo.trim(),
-                x: Math.min(startX, endX),
-                y: Math.min(startY, endY),
-                ancho: Math.abs(width),
-                alto: Math.abs(height)
+                x: absX,
+                y: absY,
+                ancho: absW,
+                alto: absH,
+                rel_x: absX / drawCanvas.width,
+                rel_y: absY / drawCanvas.height,
+                rel_w: absW / drawCanvas.width,
+                rel_h: absH / drawCanvas.height,
+                pagina: 1
             });
             actualizarListaCampos();
         }
@@ -435,8 +491,8 @@
             ctx.strokeRect(campo.x, campo.y, campo.ancho, campo.alto);
             
             ctx.fillStyle = '#000';
-            ctx.font = 'bold 14px Arial';
-            ctx.fillText(campo.nombre, campo.x + 5, campo.y + 15);
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(campo.nombre, campo.x + 4, campo.y + 14);
         });
     }
 
@@ -451,8 +507,7 @@
         camposDibujados.forEach((campo, index) => {
             lista.innerHTML += `
                 <li class="campo-item">
-                    <span><strong>${campo.nombre}</strong>   
-<span style="font-size:10px; color:#aaa;">(X: ${Math.round(campo.x)}, Y: ${Math.round(campo.y)})</span></span>
+                    <span><strong>${campo.nombre}</strong> <span style="font-size:10px; color:#aaa;">(X: ${(campo.rel_x*100).toFixed(1)}%, Y: ${(campo.rel_y*100).toFixed(1)}%)</span></span>
                     <button class="btn-danger" style="padding: 4px 8px;" onclick="borrarCampo(${index})">❌</button>
                 </li>
             `;
@@ -465,22 +520,18 @@
         redibujarCampos();
     }
 
-
-
-
-
-        // --- LÓGICA DE MODOS (IA vs RELLENADO) ---
+    // --- MODOS IA vs RELLENADO ---
     let preguntasIA = [];
 
     function cambiarModoPlantilla() {
         const tipo = document.getElementById('tpl-tipo').value;
         if (tipo === 'ia') {
             document.getElementById('seccion-pdf-admin').style.display = 'none';
-            document.getElementById('panel-lienzo').style.display = 'none'; // Ocultar el lienzo
+            document.getElementById('panel-lienzo').style.display = 'none';
             document.getElementById('seccion-ia-admin').style.display = 'block';
         } else {
             document.getElementById('seccion-pdf-admin').style.display = 'block';
-            document.getElementById('panel-lienzo').style.display = 'flex'; // Mostrar el lienzo
+            document.getElementById('panel-lienzo').style.display = 'flex';
             document.getElementById('seccion-ia-admin').style.display = 'none';
         }
     }
@@ -517,7 +568,7 @@
         actualizarListaPreguntasIA();
     }
 
-    // --- GUARDAR PLANTILLA (ACTUALIZADO) ---
+    // --- GUARDAR PLANTILLA Y SUS COORDENADAS EN SUPABASE ---
     async function guardarPlantilla() {
         const nombre = document.getElementById('tpl-nombre').value.trim();
         const tipo = document.getElementById('tpl-tipo').value;
@@ -531,40 +582,53 @@
             if (preguntasIA.length === 0) return alert("Debes añadir al menos una pregunta para la IA.");
             configuracionJSON = { preguntas: preguntasIA };
         } else {
-            if (camposDibujados.length === 0) return alert("Debes dibujar al menos un campo en el PDF.");
+            if (camposDibujados.length === 0) return alert("Debes dibujar al menos un campo en la plantilla.");
             configuracionJSON = { elementos: camposDibujados };
         }
 
         try {
+            let pathArchivoStorage = null;
+
+            // Si se subió un archivo y es modo rellenado, guardarlo en el Bucket de Supabase Storage
+            if (tipo === 'rellenado' && pdfBytesProcesado) {
+                const nombreArchivo = `plantillas/template_${Date.now()}.pdf`;
+                const { data: storageData, error: storageError } = await supabase
+                    .storage
+                    .from('documentos')
+                    .upload(nombreArchivo, pdfBytesProcesado, { contentType: 'application/pdf' });
+
+                if (!storageError && storageData) {
+                    pathArchivoStorage = storageData.path;
+                }
+            }
+
             const { data, error } = await supabase.from('plantillas').insert([{
                 nombre: nombre,
                 tipo: tipo,
                 descripcion: desc,
+                archivo_url: pathArchivoStorage,
                 configuracion: configuracionJSON
             }]);
 
             if (error) throw error;
 
-            alert("✅ ¡Plantilla guardada exitosamente en Supabase!");
+            alert("✅ ¡Plantilla y coordenadas guardadas exitosamente en Supabase!");
             
-            // Limpiar formulario
+            // Reiniciar campos
             document.getElementById('tpl-nombre').value = '';
             document.getElementById('tpl-desc').value = '';
+            document.getElementById('pdf-upload').value = '';
             camposDibujados = [];
             preguntasIA = [];
+            pdfBytesProcesado = null;
             actualizarListaCampos();
             actualizarListaPreguntasIA();
-            if(tipo === 'rellenado') redibujarCampos();
+            if (tipo === 'rellenado') redibujarCampos();
 
         } catch (err) {
             alert("❌ Error al guardar: " + err.message);
         }
     }
-
-
-
-
-    
 </script>
 </body>
 </html>
