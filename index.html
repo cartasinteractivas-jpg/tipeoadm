@@ -398,17 +398,14 @@
     </style>
 </head>
 <body>
-
     <div class="header">
         <h1>🛠️ Admin: Generador de Documentos v2</h1>
         <span style="color: #2ecc71; font-weight: bold;" id="status-db">Conectando a BD...</span>
     </div>
-
     <div class="tabs">
         <button class="tab-btn active" onclick="openTab('tab-codigos', this)">🎟️ Gestión de Códigos</button>
         <button class="tab-btn" onclick="openTab('tab-plantillas', this)">📄 Creador de Plantillas</button>
     </div>
-
     <!-- PESTAÑA 1: GESTIÓN DE CÓDIGOS -->
     <div id="tab-codigos" class="tab-content active" style="flex-direction: column;">
         <div class="panel" style="display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap;">
@@ -425,7 +422,6 @@
             </div>
             <button class="btn-success" onclick="crearCodigo()" style="height: 42px; margin-bottom: 15px;">➕ Crear Código</button>
         </div>
-
         <div class="panel" style="flex: 1; margin-top: 20px;">
             <h3 style="color: #f1c40f;">Códigos Activos</h3>
             <table>
@@ -443,7 +439,6 @@
             </table>
         </div>
     </div>
-
     <!-- PESTAÑA 2: CREADOR DE PLANTILLAS VISUAL -->
     <div id="tab-plantillas" class="tab-content">
         <div class="panel-izquierdo">
@@ -463,7 +458,6 @@
                 <label>Descripción (Para el cliente)</label>
                 <textarea id="tpl-desc" rows="2" placeholder="Ej: Ideal para alquiler de cuartos..."></textarea>
             </div>
-
             <!-- Configuración de página -->
             <div id="seccion-config-pagina" style="background:#1a1a1a; padding:12px; border-radius:8px; margin-top:5px;">
                 <h4 style="color:#f1c40f; margin-bottom:8px; font-size:13px;">📐 Configuración de Página</h4>
@@ -496,7 +490,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- SECCIÓN RELLENADO -->
             <div id="seccion-pdf-admin">
                 <div class="input-group" style="margin-top:5px;">
@@ -509,7 +502,6 @@
                     <li style="color: #666; font-size: 13px; text-align: center;">No hay campos aún</li>
                 </ul>
             </div>
-
             <!-- SECCIÓN IA -->
             <div id="seccion-ia-admin" style="display: none;">
                 <h3 style="color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 10px;">2. Preguntas para la IA</h3>
@@ -522,11 +514,9 @@
                     <li style="color: #666; font-size: 13px; text-align: center;">No hay preguntas aún</li>
                 </ul>
             </div>
-
             <button class="btn-primary" onclick="guardarPlantilla()" style="margin-top: 10px;">💾 Guardar Plantilla en BD</button>
             <button class="btn-orange btn-sm" onclick="cargarPlantillasGuardadas()" style="margin-top:5px;">📋 Ver plantillas guardadas</button>
         </div>
-
         <!-- PANEL DERECHO -->
         <div class="panel-derecho" id="panel-lienzo">
             <div class="canvas-container" id="canvas-wrapper" style="display: none;">
@@ -538,7 +528,6 @@
             </div>
         </div>
     </div>
-
     <!-- Modal para configurar campo -->
     <div id="modal-campo" class="modal-overlay">
         <div class="modal-content">
@@ -580,14 +569,12 @@
             </div>
         </div>
     </div>
-
     <script>
         const supabaseUrl = 'https://wpzddhmllctdsiuxenss.supabase.co';
         const supabaseKey =
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwemRkaG1sbGN0ZHNpdXhlbnNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjUyNzQsImV4cCI6MjA5OTU0MTI3NH0.hwSxJ3Sk_RlgbvFyr8S64XRuxW7j55BU4gaIneFTuhY';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
         let pdfBytesProcesado = null;
         let camposDibujados = [];
         let isDrawing = false;
@@ -596,7 +583,6 @@
         let campoPendiente = null;
         const drawCanvas = document.getElementById('draw-canvas');
         const ctx = drawCanvas.getContext('2d');
-
         async function init() {
             const { data, error } = await supabase.from('usuarios_codigos').select('id').limit(1);
             const statusEl = document.getElementById('status-db');
@@ -610,21 +596,18 @@
             }
         }
         init();
-
         function openTab(tabId, btnElement) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             btnElement.classList.add('active');
         }
-
         function generarCodigoRandom() {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             let result = 'DOC-';
             for (let i = 0; i < 6; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
             document.getElementById('nuevo-codigo').value = result;
         }
-
         async function cargarCodigos() {
             const { data, error } = await supabase.from('usuarios_codigos').select('*').order('fecha_creacion', {
                 ascending: false });
@@ -651,7 +634,6 @@
                 </tr>`;
             });
         }
-
         async function crearCodigo() {
             const codigo = document.getElementById('nuevo-codigo').value.trim().toUpperCase();
             const creditos = parseInt(document.getElementById('nuevo-creditos').value);
@@ -667,14 +649,12 @@
                 cargarCodigos();
             } catch (err) { alert("❌ Error: " + err.message); }
         }
-
         async function eliminarCodigo(id, codigoStr) {
             if (!confirm(`¿Estás seguro de eliminar el código ${codigoStr}?`)) return;
             const { error } = await supabase.from('usuarios_codigos').delete().eq('id', id);
             if (error) alert("Error al eliminar: " + error.message);
             else cargarCodigos();
         }
-
         async function recargarCodigo(id, creditosActuales) {
             const cantidadStr = prompt(
                 `¿Cuántos créditos deseas SUMAR?\n(Actualmente tiene ${creditosActuales} créditos)`, "5");
@@ -688,7 +668,6 @@
             alert(`✅ ¡Recarga exitosa! Ahora tiene ${nuevosCreditos} créditos.`);
             cargarCodigos();
         }
-
         function compartirCodigo(codigo) {
             const mensaje =
                 `¡Hola! Aquí tienes tu código para DocuFácil: *${codigo}*\n\nIngresa a la aplicación y empieza a generar tus documentos. 📄✨`;
@@ -697,7 +676,6 @@
                 if (confirm('✅ Copiado al portapapeles.\n\n¿Abrir WhatsApp?')) window.open(urlWa, '_blank');
             }).catch(() => { alert(`Tu código es: ${codigo}\n\n(Cópialo manualmente)`); });
         }
-
         document.getElementById('pdf-upload').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -737,7 +715,6 @@
                 document.getElementById('mensaje-vacio').innerText = "Ocurrió un error al cargar el archivo.";
             }
         });
-
         async function renderizarPDFEnLienzo(arrayBuffer) {
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             const page = await pdf.getPage(1);
@@ -756,7 +733,6 @@
             actualizarListaCampos();
             redibujarCampos();
         }
-
         drawCanvas.addEventListener('mousedown', (e) => {
             isDrawing = true;
             const rect = drawCanvas.getBoundingClientRect();
@@ -802,7 +778,6 @@
             abrirModalCampo();
             redibujarCampos();
         });
-
         function abrirModalCampo() {
             document.getElementById('modal-campo-nombre').value = '';
             document.getElementById('modal-campo-tipo').value = 'texto';
@@ -815,13 +790,11 @@
                     'flex' : 'none';
             };
         }
-
         function cerrarModalCampo() {
             document.getElementById('modal-campo').style.display = 'none';
             campoPendiente = null;
             redibujarCampos();
         }
-
         function confirmarCampo() {
             const nombre = document.getElementById('modal-campo-nombre').value.trim();
             if (!nombre) { alert('Debes poner un nombre al campo'); return; }
@@ -841,7 +814,6 @@
             actualizarListaCampos();
             redibujarCampos();
         }
-
         function redibujarCampos() {
             ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
             camposDibujados.forEach(campo => {
@@ -855,7 +827,6 @@
                 ctx.fillText(campo.nombre, campo.x + 4, campo.y + 14);
             });
         }
-
         function actualizarListaCampos() {
             const lista = document.getElementById('lista-campos');
             lista.innerHTML = '';
@@ -874,13 +845,10 @@
                 </li>`;
             });
         }
-
         function borrarCampo(index) { camposDibujados.splice(index, 1);
             actualizarListaCampos();
             redibujarCampos(); }
-
         let preguntasIA = [];
-
         function cambiarModoPlantilla() {
             const tipo = document.getElementById('tpl-tipo').value;
             if (tipo === 'ia') {
@@ -895,7 +863,6 @@
                 document.getElementById('seccion-config-pagina').style.display = 'block';
             }
         }
-
         function agregarPreguntaIA() {
             const input = document.getElementById('nueva-pregunta-ia');
             const pregunta = input.value.trim();
@@ -904,7 +871,6 @@
             input.value = '';
             actualizarListaPreguntasIA();
         }
-
         function actualizarListaPreguntasIA() {
             const lista = document.getElementById('lista-preguntas-ia');
             lista.innerHTML = '';
@@ -914,15 +880,73 @@
                 lista.innerHTML += `<li class="campo-item"><span><strong>${preg}</strong></span><button class="btn-danger btn-sm" onclick="borrarPreguntaIA(${index})">❌</button></li>`;
             });
         }
-
         function borrarPreguntaIA(index) { preguntasIA.splice(index, 1);
             actualizarListaPreguntasIA(); }
-
         function obtenerDimensionesPagina() {
             const size = document.getElementById('tpl-page-size').value;
             const dims = { A4: { w: 595.28, h: 841.89 }, A5: { w: 419.53, h: 595.28 }, Letter: { w: 612,
                 h: 792 } };
             return dims[size] || dims['A4'];
+        }
+        /** Genera descripción de layout para que la IA respete proporciones del documento */
+        function construirMapaLayout(elementos, pageSize, margins, pageDims) {
+            // Ordenar campos de arriba a abajo, izquierda a derecha
+            const sorted = [...elementos].sort((a, b) => {
+                const dy = (a.rel_y || 0) - (b.rel_y || 0);
+                if (Math.abs(dy) > 0.02) return dy;
+                return (a.rel_x || 0) - (b.rel_x || 0);
+            });
+            const lineas = sorted.map((c, i) => {
+                const yPct = ((c.rel_y || 0) * 100).toFixed(1);
+                const xPct = ((c.rel_x || 0) * 100).toFixed(1);
+                const wPct = ((c.rel_w || 0) * 100).toFixed(1);
+                const hPct = ((c.rel_h || 0) * 100).toFixed(1);
+                return `${i + 1}. "${c.nombre}" (${c.tipo}) → posición vertical ${yPct}% desde arriba, horizontal ${xPct}% desde izquierda, ancho ${wPct}%, alto ${hPct}%, alineación ${c.alineacion || 'izquierda'}`;
+            });
+            const descripcion = [
+                `DOCUMENTO FORMAL tamaño ${pageSize} (${pageDims.w || pageDims.width || 595}×${pageDims.h || pageDims.height || 842} pt).`,
+                `Márgenes: superior ${margins.top}cm, inferior ${margins.bottom}cm, izquierdo ${margins.left}cm, derecho ${margins.right}cm.`,
+                `Estructura visual de campos (de arriba hacia abajo, como renglones de un documento real):`,
+                ...lineas,
+                `INSTRUCCIONES DE ESTILO: Respeta el orden vertical de los campos como renglones. No inventes secciones fuera de estos bloques. Usa lenguaje formal. Los textos deben caber en el alto relativo de cada campo (campos bajos = una línea; campos altos = párrafo corto). Deja proporción de espacios en blanco entre bloques similar a un documento oficial.`
+            ].join('\n');
+            return {
+                orden_vertical: sorted.map(c => c.nombre),
+                campos_detalle: sorted.map(c => ({
+                    nombre: c.nombre,
+                    tipo: c.tipo,
+                    y_pct: Math.round((c.rel_y || 0) * 1000) / 10,
+                    x_pct: Math.round((c.rel_x || 0) * 1000) / 10,
+                    w_pct: Math.round((c.rel_w || 0) * 1000) / 10,
+                    h_pct: Math.round((c.rel_h || 0) * 1000) / 10,
+                    alineacion: c.alineacion || 'izquierda'
+                })),
+                descripcion_para_ia: descripcion
+            };
+        }
+
+        /** Captura el canvas del PDF como JPG (mejor para visión IA que el PDF crudo) */
+        async function capturarVistaPreviaJPG() {
+            const pdfCanvas = document.getElementById('pdf-canvas');
+            if (!pdfCanvas || !pdfCanvas.width) return null;
+            return new Promise((resolve) => {
+                try {
+                    // Reducir un poco para no subir archivos enormes
+                    const maxW = 900;
+                    const scale = Math.min(1, maxW / pdfCanvas.width);
+                    const off = document.createElement('canvas');
+                    off.width = Math.round(pdfCanvas.width * scale);
+                    off.height = Math.round(pdfCanvas.height * scale);
+                    const ctx = off.getContext('2d');
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0, 0, off.width, off.height);
+                    ctx.drawImage(pdfCanvas, 0, 0, off.width, off.height);
+                    off.toBlob((blob) => resolve(blob), 'image/jpeg', 0.82);
+                } catch (e) {
+                    console.warn('No se pudo capturar vista previa', e);
+                    resolve(null);
+                }
+            });
         }
 
         async function guardarPlantilla() {
@@ -930,7 +954,6 @@
             const tipo = document.getElementById('tpl-tipo').value;
             const desc = document.getElementById('tpl-desc').value.trim();
             if (!nombre) return alert("Por favor, ponle un nombre a la plantilla.");
-
             const pageSize = document.getElementById('tpl-page-size').value;
             const margins = {
                 top: parseFloat(document.getElementById('tpl-margin-top').value) || 1.0,
@@ -939,13 +962,11 @@
                 right: parseFloat(document.getElementById('tpl-margin-right').value) || 1.0,
             };
             const pageDims = obtenerDimensionesPagina();
-
             let configuracionJSON = {
                 pageSize: pageSize,
                 pageDimensions: pageDims,
                 margins: margins,
             };
-
             if (tipo === 'ia') {
                 if (preguntasIA.length === 0) return alert("Debes añadir al menos una pregunta para la IA.");
                 configuracionJSON.preguntas = preguntasIA;
@@ -953,7 +974,7 @@
             } else {
                 if (camposDibujados.length === 0) return alert(
                 "Debes dibujar al menos un campo en la plantilla.");
-                configuracionJSON.elementos = camposDibujados.map(c => ({
+                const elementos = camposDibujados.map(c => ({
                     nombre: c.nombre,
                     tipo: c.tipo,
                     formato: c.formato,
@@ -964,19 +985,33 @@
                     rel_h: c.rel_h,
                     pagina: c.pagina,
                 }));
+                configuracionJSON.elementos = elementos;
                 configuracionJSON.tipo = 'rellenado';
+                // Mapa de layout para que la app/IA respete proporciones y renglones
+                configuracionJSON.layout_map = construirMapaLayout(elementos, pageSize, margins, pageDims);
             }
-
             try {
                 let pathArchivoStorage = null;
+                let pathPreviewJpg = null;
+                const ts = Date.now();
                 if (tipo === 'rellenado' && pdfBytesProcesado) {
-                    const nombreArchivo = `plantillas/template_${Date.now()}.pdf`;
+                    const nombreArchivo = `plantillas/template_${ts}.pdf`;
                     const { data: storageData, error: storageError } = await supabase.storage.from(
                         'documentos').upload(nombreArchivo, pdfBytesProcesado, { contentType: 'application/pdf',
                         upsert: true });
                     if (!storageError && storageData) { pathArchivoStorage = storageData.path; }
+                    // Vista previa JPG (mejor para visión IA)
+                    const jpgBlob = await capturarVistaPreviaJPG();
+                    if (jpgBlob) {
+                        const previewName = `plantillas/preview_${ts}.jpg`;
+                        const { data: prevData, error: prevErr } = await supabase.storage.from('documentos')
+                            .upload(previewName, jpgBlob, { contentType: 'image/jpeg', upsert: true });
+                        if (!prevErr && prevData) {
+                            pathPreviewJpg = prevData.path;
+                            configuracionJSON.preview_jpg = pathPreviewJpg;
+                        }
+                    }
                 }
-
                 const { data, error } = await supabase.from('plantillas').insert([{
                     nombre: nombre,
                     tipo: tipo,
@@ -985,7 +1020,7 @@
                     configuracion: configuracionJSON,
                 }]);
                 if (error) throw error;
-                alert("✅ ¡Plantilla guardada exitosamente en Supabase!");
+                alert("✅ ¡Plantilla guardada!\n\nSe guardó:\n• Coordenadas de campos\n• Mapa de layout (renglones/proporciones) para la IA\n• PDF base" + (pathPreviewJpg ? "\n• Vista previa JPG del documento" : ""));
                 document.getElementById('tpl-nombre').value = '';
                 document.getElementById('tpl-desc').value = '';
                 document.getElementById('pdf-upload').value = '';
@@ -997,7 +1032,6 @@
                 if (tipo === 'rellenado') redibujarCampos();
             } catch (err) { alert("❌ Error al guardar: " + err.message); }
         }
-
         async function cargarPlantillasGuardadas() {
             const { data, error } = await supabase.from('plantillas').select('*').order('id', { ascending: false });
             if (error) { alert("Error cargando plantillas: " + error.message); return; }
@@ -1005,7 +1039,7 @@
             let lista = "PLANTILLAS GUARDADAS:\n\n";
             data.forEach((p, i) => {
                 lista +=
-                    `${i+1}. "${p.nombre}" | Tipo: ${p.tipo} | ID: ${p.id}\n   Desc: ${p.descripcion || 'Sin descripción'}\n   Config: ${JSON.stringify(p.configuracion).substring(0,120)}...\n\n`;
+                    `${i+1}. "${p.nombre}" | Tipo: ${p.tipo} | ID: ${p.id}\n Desc: ${p.descripcion || 'Sin descripción'}\n Config: ${JSON.stringify(p.configuracion).substring(0,120)}...\n\n`;
             });
             alert(lista);
             console.log("Plantillas:", data);
