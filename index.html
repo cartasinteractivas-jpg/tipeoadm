@@ -901,17 +901,25 @@
                 const xPct = ((c.rel_x || 0) * 100).toFixed(1);
                 const wPct = ((c.rel_w || 0) * 100).toFixed(1);
                 const hPct = ((c.rel_h || 0) * 100).toFixed(1);
-                return `${i + 1}. "${c.nombre}" (${c.tipo}) → posición vertical ${yPct}% desde arriba, horizontal ${xPct}% desde izquierda, ancho ${wPct}%, alto ${hPct}%, alineación ${c.alineacion || 'izquierda'}`;
+                return `${i + 1}. "${c.nombre}" (${c.tipo}) → posición vertical ${yPct}% desde arriba, horizontal ${xPct}% desde izquierda, ancho ${wPct}%, alto ${hPct}%, alineación ${c.alineacion || 'izquierda'}, letra 12pt`;
             });
             const descripcion = [
                 `DOCUMENTO FORMAL tamaño ${pageSize} (${pageDims.w || pageDims.width || 595}×${pageDims.h || pageDims.height || 842} pt).`,
                 `Márgenes: superior ${margins.top}cm, inferior ${margins.bottom}cm, izquierdo ${margins.left}cm, derecho ${margins.right}cm.`,
+                `TIPOGRAFÍA OBLIGATORIA: todo el documento usa el mismo tamaño de letra 12 pt. No varíes tamaños entre campos.`,
                 `Estructura visual de campos (de arriba hacia abajo, como renglones de un documento real):`,
                 ...lineas,
-                `INSTRUCCIONES DE ESTILO: Respeta el orden vertical de los campos como renglones. No inventes secciones fuera de estos bloques. Usa lenguaje formal. Los textos deben caber en el alto relativo de cada campo (campos bajos = una línea; campos altos = párrafo corto). Deja proporción de espacios en blanco entre bloques similar a un documento oficial.`
+                `INSTRUCCIONES DE ESTILO:`,
+                `- Respeta el orden vertical como renglones de un documento oficial.`,
+                `- Introducción y cuerpo: alineación justificada; párrafos formales.`,
+                `- Campos bajos (saludo, fecha, despedida, nombre, dni): una sola línea corta.`,
+                `- Si el cuerpo o la introducción son muy largos, el sistema creará otra página A4 y continuará el texto justificado; genera el contenido completo y coherente.`,
+                `- No inventes secciones fuera de estos bloques. Lenguaje formal (Perú/Chile).`
             ].join('\n');
             return {
                 orden_vertical: sorted.map(c => c.nombre),
+                fontSize: 12,
+                multiPageBody: true,
                 campos_detalle: sorted.map(c => ({
                     nombre: c.nombre,
                     tipo: c.tipo,
@@ -919,7 +927,8 @@
                     x_pct: Math.round((c.rel_x || 0) * 1000) / 10,
                     w_pct: Math.round((c.rel_w || 0) * 1000) / 10,
                     h_pct: Math.round((c.rel_h || 0) * 1000) / 10,
-                    alineacion: c.alineacion || 'izquierda'
+                    alineacion: c.alineacion || 'izquierda',
+                    fontSize: 12
                 })),
                 descripcion_para_ia: descripcion
             };
@@ -974,19 +983,30 @@
             } else {
                 if (camposDibujados.length === 0) return alert(
                 "Debes dibujar al menos un campo en la plantilla.");
-                const elementos = camposDibujados.map(c => ({
-                    nombre: c.nombre,
-                    tipo: c.tipo,
-                    formato: c.formato,
-                    alineacion: c.alineacion,
-                    rel_x: c.rel_x,
-                    rel_y: c.rel_y,
-                    rel_w: c.rel_w,
-                    rel_h: c.rel_h,
-                    pagina: c.pagina,
-                }));
+                const elementos = camposDibujados.map(c => {
+                    let alin = c.alineacion || 'izquierda';
+                    // Introducción / cuerpo: forzar justificado si el nombre lo indica
+                    const n = (c.nombre || '').toLowerCase();
+                    if (/introduc|cuerpo/.test(n) && (!c.alineacion || c.alineacion === 'izquierda')) {
+                        alin = 'justificado';
+                    }
+                    return {
+                        nombre: c.nombre,
+                        tipo: c.tipo,
+                        formato: c.formato,
+                        alineacion: alin,
+                        fontSize: 12,
+                        rel_x: c.rel_x,
+                        rel_y: c.rel_y,
+                        rel_w: c.rel_w,
+                        rel_h: c.rel_h,
+                        pagina: c.pagina,
+                    };
+                });
                 configuracionJSON.elementos = elementos;
                 configuracionJSON.tipo = 'rellenado';
+                configuracionJSON.fontSize = 12; // tipografía única del documento
+                configuracionJSON.multiPageBody = true; // cuerpo largo → nueva A4
                 // Mapa de layout para que la app/IA respete proporciones y renglones
                 configuracionJSON.layout_map = construirMapaLayout(elementos, pageSize, margins, pageDims);
             }
